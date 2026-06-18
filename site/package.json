@@ -1,0 +1,26 @@
+{
+  "name": "imprint-site",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && wrangler dev",
+    "deploy": "node build.mjs && alchemy deploy",
+    "destroy": "alchemy destroy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.12.19",
+    "svelte": "^5.45.0",
+    "svelte-hono": "^0.1.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250410.0",
+    "alchemy": "^0.93.12",
+    "esbuild": "^0.25.10",
+    "esbuild-svelte": "^0.9.5",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.92.0"
+  }
+}

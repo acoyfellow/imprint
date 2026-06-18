@@ -1,0 +1,29 @@
+{
+  "name": "imprint",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Every commit gets its own repository-aware LLM.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "imprint": "./src/cli.ts"
+  },
+  "scripts": {
+    "imprint": "bun src/cli.ts",
+    "prove": "bun test && bun src/cli.ts prove",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "site:build": "bun --cwd site run build",
+    "site:dev": "bun --cwd site run dev",
+    "site:deploy": "bun --cwd site run deploy"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@types/bun": "latest",
+    "typescript": "^5.9.3"
+  }
+}

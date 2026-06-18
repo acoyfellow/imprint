@@ -1,0 +1,9 @@
+node_modules
+dist
+site/build
+site/bundles.generated.ts
+.env
+.dev.vars
+.alchemy
+.wrangler
+.imprint
