@@ -20,7 +20,10 @@
     "lint:fix": "biome check --write .",
     "site:build": "bun --cwd site run build",
     "site:dev": "bun --cwd site run dev",
-    "site:deploy": "bun --cwd site run deploy"
+    "site:deploy": "bun --cwd site run deploy",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test:manual": "bash proof/manual-test.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
