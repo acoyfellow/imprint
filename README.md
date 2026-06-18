@@ -18,6 +18,12 @@ bun run prove
 
 The proof creates two commits with different APIs, imprints both, promotes the new one, and rolls back to the old one.
 
+Run the same commit-bound question through real Workers AI:
+
+```bash
+bun run prove:ai
+```
+
 Use it on a repository:
 
 ```bash
@@ -28,7 +34,7 @@ bun run imprint promote HEAD
 bun run imprint rollback HEAD~1
 ```
 
-`ask` uses Workers AI when `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are set.
+`ask` uses Workers AI when `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are set. The production site lives at [imprint.coey.dev](https://imprint.coey.dev).
 
 ## API
 

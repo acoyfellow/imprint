@@ -13,6 +13,7 @@
   "scripts": {
     "imprint": "bun src/cli.ts",
     "prove": "bun test && bun src/cli.ts prove",
+    "prove:ai": "bash proof/run-e2e.sh",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
@@ -24,6 +25,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
     "@types/bun": "latest",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "^4.102.0"
   }
 }

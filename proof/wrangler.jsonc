@@ -1,0 +1,7 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "imprint-proof",
+  "main": "worker.ts",
+  "compatibility_date": "2026-04-17",
+  "ai": { "binding": "AI", "remote": true }
+}
