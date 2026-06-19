@@ -1,4 +1,8 @@
-interface Env {
+import { type AdapterEnv, AdapterReleases, handleAdapterRequest } from './adapter-service';
+
+export { AdapterReleases };
+
+interface Env extends AdapterEnv {
   AI: {
     run(model: string, input: unknown): Promise<unknown>;
   };
@@ -75,6 +79,8 @@ async function contextFor(input: AskRequest) {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const adapterResponse = await handleAdapterRequest(request, env);
+    if (adapterResponse) return adapterResponse;
     if (request.method === 'GET') {
       return Response.json({
         name: 'imprint',

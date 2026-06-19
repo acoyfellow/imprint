@@ -7,6 +7,26 @@
     "binding": "AI",
     "remote": true
   },
+  "r2_buckets": [
+    {
+      "binding": "ADAPTERS",
+      "bucket_name": "imprint-adapters"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ADAPTER_RELEASES",
+        "class_name": "AdapterReleases"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["AdapterReleases"]
+    }
+  ],
   "observability": {
     "enabled": true
   }

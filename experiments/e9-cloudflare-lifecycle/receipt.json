@@ -1,0 +1,38 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e9-cloudflare-lifecycle",
+  "date": "2026-06-19",
+  "endpoint": "https://imprint.coy.workers.dev",
+  "terraform": {
+    "resource": "cloudflare_r2_bucket.adapters",
+    "bucket": "imprint-adapters",
+    "apply": "1 added, 0 changed, 0 destroyed"
+  },
+  "runtime": {
+    "r2": "imprint-adapters",
+    "durableObject": "AdapterReleases",
+    "authentication": "bearer secret configured outside source"
+  },
+  "artifacts": [
+    {
+      "id": "imp_adapter_e019f4e2341e41e5435d",
+      "repository": "exercism/python",
+      "commit": "eb69066cde65f84b8b18055023fd87f53ac47c7c"
+    },
+    {
+      "id": "imp_adapter_a754526dd4db74dd3930",
+      "repository": "exercism/python",
+      "commit": "ce0a2593ccdc3ff44d996b76403a67bfe8d9d7bf"
+    }
+  ],
+  "checks": {
+    "multipartUpload": true,
+    "r2ManifestRead": true,
+    "candidateRegistration": true,
+    "compareAndSwapPromotion": true,
+    "secondPromotion": true,
+    "rollback": true,
+    "activeAfterRollback": "imp_adapter_e019f4e2341e41e5435d"
+  },
+  "passed": true
+}

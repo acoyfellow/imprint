@@ -12,6 +12,7 @@ Each directory asks one binary question about reproducing [Code2LoRA](https://ar
 | E5 benchmark slice | Pass | Adapter scored 4/5 exact matches where base scored 0/5 on a released `ir_test` slice. |
 | E7 evolution | Pass | A 144-commit GRU rollout produced 144 distinct repository-adapter digests. |
 | E8 Cloudflare-native model path | Blocked | Workers AI lacks the exact base model and a documented arbitrary adapter upload/select API. |
+| E9 Cloudflare lifecycle | Pass | Terraform + R2 + Durable Object stored two real adapters, promoted both with CAS, and rolled back. |
 
 These are feasibility receipts, not reproduction of the paper's complete benchmark tables. E6 full evaluation and an E7 quality comparison remain.
 

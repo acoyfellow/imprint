@@ -102,11 +102,44 @@ The included [experiments](experiments) use the paper's public source, checkpoin
 
 Workers AI does not currently expose the paper's exact base model or arbitrary adapter loading, so that inference ran locally on Apple silicon.
 
+The deployed Cloudflare control plane stores immutable adapters in R2 and keeps candidate/active/rollback state in a Durable Object. Terraform owns the R2 bucket; the Worker upload, CAS promotion, and rollback path is captured in [E9](experiments/e9-cloudflare-lifecycle).
+
 The [local Code2LoRA backend](experiments/code2lora-local) packages generated weights as a backend-neutral artifact (`adapter_model.safetensors`, config, manifest, and receipt) and runs exact base-vs-adapter evaluation. Library consumers can validate that directory with `openAdapterArtifact(path)`. This reference backend does not imply Cloudflare-native adapter inference.
+
+## Cloudflare adapter artifact lifecycle
+
+The Worker can own immutable `imprint.adapter.v1` artifacts without pretending to compile or run adapters in Workers. Files live in the `imprint-adapters` R2 bucket; one SQLite-backed Durable Object owns the candidate/active pointer, promotion history, and compare-and-swap (CAS) transitions.
+
+Create the bucket and authentication secret before deploying (deployment is intentionally not part of local setup):
+
+```bash
+npx wrangler r2 bucket create imprint-adapters
+npx wrangler secret put ADAPTER_API_TOKEN
+```
+
+All lifecycle routes require `Authorization: Bearer $ADAPTER_API_TOKEN`. For local development only, set `DEV_MODE=true` (for example, `DEV_MODE=true bun run dev`) to explicitly bypass authentication.
+
+```bash
+# Upload the four files as multipart parts. The manifest's file sizes and SHA-256s are verified.
+curl -X POST "$ORIGIN/v1/adapters" -H "Authorization: Bearer $ADAPTER_API_TOKEN" \
+  -F manifest=@artifact/manifest.json \
+  -F adapter_model.safetensors=@artifact/adapter_model.safetensors \
+  -F adapter_config.json=@artifact/adapter_config.json \
+  -F receipt.json=@artifact/receipt.json
+
+curl -H "Authorization: Bearer $ADAPTER_API_TOKEN" "$ORIGIN/v1/releases"
+curl -H "Authorization: Bearer $ADAPTER_API_TOKEN" "$ORIGIN/v1/adapters/ARTIFACT_ID/manifest"
+curl -X POST "$ORIGIN/v1/releases/promote" -H "Authorization: Bearer $ADAPTER_API_TOKEN" \
+  -H 'content-type: application/json' -d '{"id":"ARTIFACT_ID","expectedActive":null}'
+curl -X POST "$ORIGIN/v1/releases/rollback" -H "Authorization: Bearer $ADAPTER_API_TOKEN" \
+  -H 'content-type: application/json' -d '{"expectedActive":"ARTIFACT_ID"}'
+```
+
+Uploads reject an artifact ID once any object exists under it. Promotion and rollback return HTTP 409 when `expectedActive` does not equal the current active ID. Upload currently accepts artifacts compiled elsewhere; there is deliberately no Workflow or fake Python/GPU compilation because Workers cannot execute the reference Code2LoRA toolchain. R2 writes are not a multi-object transaction, so interrupted uploads may leave an ID reserved and require operator cleanup before retrying.
 
 ## Status
 
-`0.0.1`. Real Git commits. Real Workers AI. No mock repository state.
+`0.0.1`. Real Git commits, Workers AI, R2, and Durable Objects. No mock repository state.
 
 ## License
 

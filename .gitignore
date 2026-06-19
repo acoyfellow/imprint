@@ -9,3 +9,9 @@ site/bundles.generated.ts
 .imprint
 experiments/**/adapter.pt
 experiments/**/run.log
+
+# Terraform local state
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/*.tfvars
