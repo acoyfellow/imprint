@@ -1,0 +1,15 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e8-cloudflare-compute",
+  "catalogModelCount": 60,
+  "exactPaperBaseModels": [],
+  "loraCatalogModels": [
+    "@cf/google/gemma-2b-it-lora",
+    "@cf/mistral/mistral-7b-instruct-v0.2-lora",
+    "@cf/meta-llama/llama-2-7b-chat-hf-lora",
+    "@cf/google/gemma-7b-it-lora"
+  ],
+  "arbitraryAdapterUploadApiDocumented": false,
+  "hypernetworkGpuJobDocumented": false,
+  "passed": false
+}

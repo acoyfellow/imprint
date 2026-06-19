@@ -1,0 +1,53 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e3-adapter-generation",
+  "source": "https://anonymous.4open.science/api/repo/code2lora-6857/zip",
+  "checkpoint": "code2lora/code2lora-direct@2728b3136eec8a448db64cde95f5f307acba9bef",
+  "dataset": "code2lora/code2lora-data-snapshots",
+  "repoId": "0xricksanchez/like-dbg",
+  "commit": "522c24530a5987bcf196375f97462af0490a9e91",
+  "rank": 16,
+  "types": [
+    "down_proj",
+    "gate_proj",
+    "k_proj",
+    "o_proj",
+    "q_proj",
+    "up_proj",
+    "v_proj"
+  ],
+  "typeDims": {
+    "down_proj": [
+      8960,
+      1536
+    ],
+    "gate_proj": [
+      1536,
+      8960
+    ],
+    "up_proj": [
+      1536,
+      8960
+    ],
+    "k_proj": [
+      1536,
+      256
+    ],
+    "o_proj": [
+      1536,
+      1536
+    ],
+    "q_proj": [
+      1536,
+      1536
+    ],
+    "v_proj": [
+      1536,
+      256
+    ]
+  },
+  "tensorCount": 14,
+  "finite": true,
+  "adapterBytes": 2642169,
+  "passed": true
+}

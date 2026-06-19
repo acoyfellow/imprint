@@ -96,6 +96,12 @@ curl -X POST https://<your-worker>.workers.dev \
 
 `0.0.1` accepts public GitHub repositories. It selects up to 40 text files and 300 KB per request, then sends that commit-bound context to Workers AI.
 
+## Code2LoRA feasibility
+
+The included [experiments](experiments) use the paper's public source, checkpoints, datasets, and exact Qwen base model. A generated adapter scored 4/5 exact matches where the frozen base scored 0/5 on one released benchmark slice, with no repository source in the prompt.
+
+Workers AI does not currently expose the paper's exact base model or arbitrary adapter loading, so that inference ran locally on Apple silicon.
+
 ## Status
 
 `0.0.1`. Real Git commits. Real Workers AI. No mock repository state.

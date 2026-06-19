@@ -1,0 +1,35 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e7-evolution",
+  "checkpointBytes": 2850714674,
+  "checkpointKeys": {
+    "gru_state": 14,
+    "head_state": 46,
+    "head_config": 5,
+    "gru_config": 3,
+    "type_dims": 7,
+    "args": 27
+  },
+  "datasetColumns": [
+    "repo_id",
+    "cross_repo_split",
+    "commit_index",
+    "commit_sha",
+    "commit_timestamp",
+    "in_repo_split",
+    "production_code_diff",
+    "n_new_assertions",
+    "n_added_assertions",
+    "n_modified_assertions",
+    "diff_embedding",
+    "repo_state_embedding"
+  ],
+  "firstRowVectorShapes": {
+    "diff_embedding": 2048,
+    "repo_state_embedding": 2048
+  },
+  "rows": 8614,
+  "hasDiffEmbedding": true,
+  "hasRepositoryState": true,
+  "passed": true
+}

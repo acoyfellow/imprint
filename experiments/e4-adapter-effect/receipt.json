@@ -1,0 +1,15 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e4-adapter-effect",
+  "model": "Qwen/Qwen2.5-Coder-1.5B",
+  "modelCommit": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
+  "repository": "0xricksanchez/like-dbg",
+  "commit": "522c24530a5987bcf196375f97462af0490a9e91",
+  "prompt": "Complete only the assertion value:\nresult = 19 + 23\nassert result ==",
+  "baseOutput": " 42\nThe assertion value is 42.",
+  "adaptedOutput": " 42",
+  "outputChanged": true,
+  "repositoryTokensInPrompt": 0,
+  "adapterLoaded": true,
+  "passed": true
+}

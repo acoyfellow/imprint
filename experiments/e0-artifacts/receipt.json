@@ -1,0 +1,519 @@
+{
+  "arxiv": {
+    "abstract": {
+      "body_bytes": 47529,
+      "content_length_header": "47529",
+      "content_type": "text/html; charset=utf-8",
+      "effective_url": "https://arxiv.org/abs/2606.06492",
+      "requested_url": "https://arxiv.org/abs/2606.06492",
+      "sha256": "712b7ea17215645289a5d398f9d2262e72cf69c672bd039c3fbe2eb09552aace",
+      "status": 200
+    },
+    "pdf": {
+      "body_bytes": 1314271,
+      "content_length_header": "1314271",
+      "content_type": "application/pdf",
+      "effective_url": "https://arxiv.org/pdf/2606.06492",
+      "requested_url": "https://arxiv.org/pdf/2606.06492",
+      "sha256": "d8d886b2439fdbcc2dec3e1cd08f5a7e788da7c3a9e58040bb57e92b3e737f8b",
+      "status": 200
+    },
+    "source": {
+      "body_bytes": 533001,
+      "content_length_header": "533001",
+      "content_type": "application/gzip",
+      "effective_url": "https://arxiv.org/e-print/2606.06492",
+      "requested_url": "https://arxiv.org/e-print/2606.06492",
+      "sha256": "3d4c79fe089ec83bf4884b0632555dc540b5ac919de1136379c37ec226c8efc8",
+      "status": 200
+    }
+  },
+  "four_open": {
+    "landing": {
+      "body_bytes": 17498,
+      "content_length_header": null,
+      "content_type": "text/html; charset=utf-8",
+      "effective_url": "https://anonymous.4open.science/r/code2lora-6857",
+      "requested_url": "https://anonymous.4open.science/r/code2lora-6857",
+      "status": 200
+    },
+    "note": "The human-facing URL redirects to an API file route; landing.status records the final unauthenticated response. The cited repository's zip endpoint was probed independently.",
+    "zip": {
+      "body_bytes": 247891,
+      "content_length_header": null,
+      "content_type": "application/zip",
+      "effective_url": "https://anonymous.4open.science/api/repo/code2lora-6857/zip",
+      "file_count": 80,
+      "requested_url": "https://anonymous.4open.science/api/repo/code2lora-6857/zip",
+      "sha256": "2dc4bec990a330ed65e7fe9e3ed50336a382c4e4d53c10bbc3dc8c41735c655a",
+      "status": 200,
+      "top_level_entries": [
+        "ENV_SETUP.md",
+        "LICENSE",
+        "README.md",
+        "REPRODUCE.md",
+        "REPRODUCE_GRU.md",
+        "baselines",
+        "create_dataset",
+        "data_paths.py",
+        "evaluation",
+        "hypernetwork",
+        "repos_collection",
+        "requirements.txt",
+        "scripts"
+      ],
+      "valid_zip": true
+    }
+  },
+  "hugging_face": {
+    "datasets": [
+      {
+        "disabled": false,
+        "files": [
+          {
+            "lfs": null,
+            "path": ".gitattributes",
+            "size": 2504
+          },
+          {
+            "lfs": null,
+            "path": "README.md",
+            "size": 1476
+          },
+          {
+            "lfs": null,
+            "path": "SNAPSHOTS_README.json",
+            "size": 2603
+          },
+          {
+            "lfs": {
+              "oid": "2f9f2dfd78618cbb7e39c73deaed6ff9508fccd2491c8aeb4f172797d26b41aa",
+              "pointerSize": 133,
+              "size": 20979060
+            },
+            "path": "commits/cr_test.parquet",
+            "size": 20979060
+          },
+          {
+            "lfs": {
+              "oid": "281812bd8d81620a83fa8bac002dbbda6c71ebbfd6a47c1df5c623be41992591",
+              "pointerSize": 133,
+              "size": 26834450
+            },
+            "path": "commits/cr_val.parquet",
+            "size": 26834450
+          },
+          {
+            "lfs": {
+              "oid": "e0cffc06d2c2f5d42ad42f2ce1b6b32ec54dbde46691cc78bc1e2bd4bb5d02e2",
+              "pointerSize": 133,
+              "size": 18069075
+            },
+            "path": "commits/ir_test.parquet",
+            "size": 18069075
+          },
+          {
+            "lfs": {
+              "oid": "1efa4e7298807fe75ecd81a099908a42e3378eed80cd568659c816f96ab19fa1",
+              "pointerSize": 133,
+              "size": 16741758
+            },
+            "path": "commits/ir_val.parquet",
+            "size": 16741758
+          },
+          {
+            "lfs": {
+              "oid": "1859a4f3920fedce17b952b469f18f8e420597e9624ad19936a546e1fa6c3cf1",
+              "pointerSize": 132,
+              "size": 6620952
+            },
+            "path": "commits/ood_test.parquet",
+            "size": 6620952
+          },
+          {
+            "lfs": {
+              "oid": "e9af541dd34eaf8ec4287b06dfc1b3a5b29f90f1ce7499a51855695786d6a3d2",
+              "pointerSize": 132,
+              "size": 1608634
+            },
+            "path": "commits/train.parquet",
+            "size": 1608634
+          },
+          {
+            "lfs": {
+              "oid": "e0f041450ab408956cb09d40bdd8660535066ac336d06e8eda01e9f0de5ee938",
+              "pointerSize": 135,
+              "size": 2964967977
+            },
+            "path": "qna/cr_test.parquet",
+            "size": 2964967977
+          },
+          {
+            "lfs": {
+              "oid": "ba09a15bb5cea390571a90538f7a666e44732b760d540b9dfd77ba0c398b9a3f",
+              "pointerSize": 135,
+              "size": 4121938729
+            },
+            "path": "qna/cr_val.parquet",
+            "size": 4121938729
+          },
+          {
+            "lfs": {
+              "oid": "2eebdf6c0d04343056513c7923dbc8fa12a74d68d0ee0db181910c9b0e0e1a1c",
+              "pointerSize": 134,
+              "size": 150695938
+            },
+            "path": "qna/ir_test.parquet",
+            "size": 150695938
+          },
+          {
+            "lfs": {
+              "oid": "69ad447e4947bda9c5300878df256a950ab3421855599aa06ac90d8b2dac7c2e",
+              "pointerSize": 134,
+              "size": 119035022
+            },
+            "path": "qna/ir_val.parquet",
+            "size": 119035022
+          },
+          {
+            "lfs": {
+              "oid": "0950365305f2a70864da9f5a093244bb78f4249389f162e3b74cd9c3fff449ce",
+              "pointerSize": 134,
+              "size": 470187473
+            },
+            "path": "qna/ood_test.parquet",
+            "size": 470187473
+          },
+          {
+            "lfs": {
+              "oid": "b2fbe5bcd7e916c8d750b654a5b0b7286578f938ed65985eca68cd2936fb5dd1",
+              "pointerSize": 132,
+              "size": 7436646
+            },
+            "path": "qna/train.parquet",
+            "size": 7436646
+          }
+        ],
+        "gated": false,
+        "id": "code2lora/code2lora-data-snapshots",
+        "private": false,
+        "readme_resolve_http": {
+          "body_bytes": 1476,
+          "content_length_header": "1476",
+          "content_type": "text/plain; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/resolve-cache/datasets/code2lora/code2lora-data-snapshots/9a2b7ab8fd2bf3e7d3972c0999bbe7dd1e34c32d/README.md?%2Fdatasets%2Fcode2lora%2Fcode2lora-data-snapshots%2Fresolve%2Fmain%2FREADME.md=&etag=%22c0dc7d7734513d86ad4c5d0e415d6ca9e23adb3d%22",
+          "requested_url": "https://huggingface.co/datasets/code2lora/code2lora-data-snapshots/resolve/main/README.md",
+          "status": 200
+        },
+        "revision": "9a2b7ab8fd2bf3e7d3972c0999bbe7dd1e34c32d",
+        "total_file_bytes": 7925122297,
+        "tree_http": {
+          "body_bytes": 4144,
+          "content_length_header": "4144",
+          "content_type": "application/json; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-snapshots/tree/main?recursive=true&limit=1000",
+          "requested_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-snapshots/tree/main?recursive=true&limit=1000",
+          "status": 200
+        }
+      },
+      {
+        "disabled": false,
+        "files": [
+          {
+            "lfs": null,
+            "path": ".gitattributes",
+            "size": 2504
+          },
+          {
+            "lfs": null,
+            "path": "EMBEDDINGS_README.json",
+            "size": 1555
+          },
+          {
+            "lfs": null,
+            "path": "README.md",
+            "size": 1939
+          },
+          {
+            "lfs": {
+              "oid": "1472bd42bed51428bf1bccbedc4c494db58bc9a6fffa72fc95f95a0613de2169",
+              "pointerSize": 133,
+              "size": 68411936
+            },
+            "path": "commits/cr_test.parquet",
+            "size": 68411936
+          },
+          {
+            "lfs": {
+              "oid": "6dfca1e1791fde09c1f310f2be9273b762332f28563d203a2ed7f0136cb3590b",
+              "pointerSize": 134,
+              "size": 612508015
+            },
+            "path": "commits/cr_train.parquet",
+            "size": 612508015
+          },
+          {
+            "lfs": {
+              "oid": "f73959d38ad7d479a3b6715d96ae22a42ea89c4e9b1830e3f9354ebada98877f",
+              "pointerSize": 133,
+              "size": 88017946
+            },
+            "path": "commits/cr_val.parquet",
+            "size": 88017946
+          },
+          {
+            "lfs": {
+              "oid": "c1c528109824941478cb3b1b43c62ba38aadce1fc0d9be6b3f5038638696584b",
+              "pointerSize": 133,
+              "size": 60262226
+            },
+            "path": "commits/ood_test.parquet",
+            "size": 60262226
+          }
+        ],
+        "gated": false,
+        "id": "code2lora/code2lora-data-commits",
+        "private": false,
+        "readme_resolve_http": {
+          "body_bytes": 1939,
+          "content_length_header": "1939",
+          "content_type": "text/plain; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/resolve-cache/datasets/code2lora/code2lora-data-commits/384af4cdb3d717d263af78299c63e439f9f38af0/README.md?%2Fdatasets%2Fcode2lora%2Fcode2lora-data-commits%2Fresolve%2Fmain%2FREADME.md=&etag=%22a94ac13d31ce3bfda1f18410a2185204fd75edd3%22",
+          "requested_url": "https://huggingface.co/datasets/code2lora/code2lora-data-commits/resolve/main/README.md",
+          "status": 200
+        },
+        "revision": "384af4cdb3d717d263af78299c63e439f9f38af0",
+        "total_file_bytes": 829206121,
+        "tree_http": {
+          "body_bytes": 1630,
+          "content_length_header": "1630",
+          "content_type": "application/json; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-commits/tree/main?recursive=true&limit=1000",
+          "requested_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-commits/tree/main?recursive=true&limit=1000",
+          "status": 200
+        }
+      },
+      {
+        "disabled": false,
+        "files": [
+          {
+            "lfs": null,
+            "path": ".gitattributes",
+            "size": 2504
+          },
+          {
+            "lfs": null,
+            "path": "README.md",
+            "size": 2115
+          },
+          {
+            "lfs": null,
+            "path": "SMART_CAP_README.json",
+            "size": 1343
+          },
+          {
+            "lfs": {
+              "oid": "f8a07994e53aba06f7e7ff5acde62bcd4a346e17a4a218f3c206d6914f9aecf4",
+              "pointerSize": 135,
+              "size": 6210960872
+            },
+            "path": "qna/cr_train.parquet",
+            "size": 6210960872
+          }
+        ],
+        "gated": false,
+        "id": "code2lora/code2lora-data-smartcap",
+        "private": false,
+        "readme_resolve_http": {
+          "body_bytes": 2115,
+          "content_length_header": "2115",
+          "content_type": "text/plain; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/resolve-cache/datasets/code2lora/code2lora-data-smartcap/f11cdf2bdba176363c258b988cc4c8cd89b4061f/README.md?%2Fdatasets%2Fcode2lora%2Fcode2lora-data-smartcap%2Fresolve%2Fmain%2FREADME.md=&etag=%224c4bd7537d629ab3a7a8c321892fd39a7e9a39e0%22",
+          "requested_url": "https://huggingface.co/datasets/code2lora/code2lora-data-smartcap/resolve/main/README.md",
+          "status": 200
+        },
+        "revision": "f11cdf2bdba176363c258b988cc4c8cd89b4061f",
+        "total_file_bytes": 6210966834,
+        "tree_http": {
+          "body_bytes": 705,
+          "content_length_header": "705",
+          "content_type": "application/json; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-smartcap/tree/main?recursive=true&limit=1000",
+          "requested_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-smartcap/tree/main?recursive=true&limit=1000",
+          "status": 200
+        }
+      },
+      {
+        "disabled": false,
+        "files": [
+          {
+            "lfs": null,
+            "path": ".gitattributes",
+            "size": 2504
+          },
+          {
+            "lfs": null,
+            "path": "README.md",
+            "size": 992
+          },
+          {
+            "lfs": {
+              "oid": "f1c27695cff949ac2432ea9592676e3f3619a9a5f8ae8c06b5d61d95279e5766",
+              "pointerSize": 133,
+              "size": 70027011
+            },
+            "path": "commits.parquet",
+            "size": 70027011
+          },
+          {
+            "lfs": {
+              "oid": "0950365305f2a70864da9f5a093244bb78f4249389f162e3b74cd9c3fff449ce",
+              "pointerSize": 134,
+              "size": 470187473
+            },
+            "path": "qna.parquet",
+            "size": 470187473
+          }
+        ],
+        "gated": false,
+        "id": "code2lora/code2lora-data-ood",
+        "private": false,
+        "readme_resolve_http": {
+          "body_bytes": 992,
+          "content_length_header": "992",
+          "content_type": "text/plain; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/resolve-cache/datasets/code2lora/code2lora-data-ood/d8f19d7ed7fba66f7bd634ae8c4b5566c48e432f/README.md?%2Fdatasets%2Fcode2lora%2Fcode2lora-data-ood%2Fresolve%2Fmain%2FREADME.md=&etag=%22c55c071706efd5a227e4b5751bfdead5f898a3c0%22",
+          "requested_url": "https://huggingface.co/datasets/code2lora/code2lora-data-ood/resolve/main/README.md",
+          "status": 200
+        },
+        "revision": "d8f19d7ed7fba66f7bd634ae8c4b5566c48e432f",
+        "total_file_bytes": 540217980,
+        "tree_http": {
+          "body_bytes": 791,
+          "content_length_header": "791",
+          "content_type": "application/json; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-ood/tree/main?recursive=true&limit=1000",
+          "requested_url": "https://huggingface.co/api/datasets/code2lora/code2lora-data-ood/tree/main?recursive=true&limit=1000",
+          "status": 200
+        }
+      }
+    ],
+    "datasets_list_http": {
+      "body_bytes": 5575,
+      "content_length_header": "5575",
+      "content_type": "application/json; charset=utf-8",
+      "effective_url": "https://huggingface.co/api/datasets?author=code2lora&limit=100&full=true",
+      "requested_url": "https://huggingface.co/api/datasets?author=code2lora&limit=100&full=true",
+      "status": 200
+    },
+    "models": [
+      {
+        "disabled": null,
+        "files": [
+          {
+            "lfs": null,
+            "path": ".gitattributes",
+            "size": 1519
+          },
+          {
+            "lfs": null,
+            "path": "README.md",
+            "size": 899
+          },
+          {
+            "lfs": {
+              "oid": "21833576d765152a68fabd2ca32fd83ed1cc266827c2cc83fa2308b9673b6049",
+              "pointerSize": 135,
+              "size": 2850714674
+            },
+            "path": "code2lora_gru.pt",
+            "size": 2850714674
+          },
+          {
+            "lfs": null,
+            "path": "metrics.jsonl",
+            "size": 967
+          }
+        ],
+        "gated": false,
+        "id": "code2lora/code2lora-gru",
+        "private": false,
+        "readme_resolve_http": {
+          "body_bytes": 899,
+          "content_length_header": "899",
+          "content_type": "text/plain; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/resolve-cache/models/code2lora/code2lora-gru/26460cba5f0de9b708277488ae0b1a826435961e/README.md?%2Fcode2lora%2Fcode2lora-gru%2Fresolve%2Fmain%2FREADME.md=&etag=%2221a29dc15e2b33d6398162a294b60f1988447305%22",
+          "requested_url": "https://huggingface.co/code2lora/code2lora-gru/resolve/main/README.md",
+          "status": 200
+        },
+        "revision": "26460cba5f0de9b708277488ae0b1a826435961e",
+        "total_file_bytes": 2850718059,
+        "tree_http": {
+          "body_bytes": 599,
+          "content_length_header": "599",
+          "content_type": "application/json; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/models/code2lora/code2lora-gru/tree/main?recursive=true&limit=1000",
+          "requested_url": "https://huggingface.co/api/models/code2lora/code2lora-gru/tree/main?recursive=true&limit=1000",
+          "status": 200
+        }
+      },
+      {
+        "disabled": null,
+        "files": [
+          {
+            "lfs": null,
+            "path": ".gitattributes",
+            "size": 1519
+          },
+          {
+            "lfs": null,
+            "path": "README.md",
+            "size": 818
+          },
+          {
+            "lfs": {
+              "oid": "a781a7e5e1038f1d480c9584c9812be70b48c6b168191bf2403404553a446c09",
+              "pointerSize": 135,
+              "size": 2716377741
+            },
+            "path": "code2lora_direct.pt",
+            "size": 2716377741
+          }
+        ],
+        "gated": false,
+        "id": "code2lora/code2lora-direct",
+        "private": false,
+        "readme_resolve_http": {
+          "body_bytes": 818,
+          "content_length_header": "818",
+          "content_type": "text/plain; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/resolve-cache/models/code2lora/code2lora-direct/2728b3136eec8a448db64cde95f5f307acba9bef/README.md?%2Fcode2lora%2Fcode2lora-direct%2Fresolve%2Fmain%2FREADME.md=&etag=%22cb9828795715b1e1588ba445fce711043d89064c%22",
+          "requested_url": "https://huggingface.co/code2lora/code2lora-direct/resolve/main/README.md",
+          "status": 200
+        },
+        "revision": "2728b3136eec8a448db64cde95f5f307acba9bef",
+        "total_file_bytes": 2716380078,
+        "tree_http": {
+          "body_bytes": 503,
+          "content_length_header": "503",
+          "content_type": "application/json; charset=utf-8",
+          "effective_url": "https://huggingface.co/api/models/code2lora/code2lora-direct/tree/main?recursive=true&limit=1000",
+          "requested_url": "https://huggingface.co/api/models/code2lora/code2lora-direct/tree/main?recursive=true&limit=1000",
+          "status": 200
+        }
+      }
+    ],
+    "models_list_http": {
+      "body_bytes": 1094,
+      "content_length_header": "1094",
+      "content_type": "application/json; charset=utf-8",
+      "effective_url": "https://huggingface.co/api/models?author=code2lora&limit=100&full=true",
+      "requested_url": "https://huggingface.co/api/models?author=code2lora&limit=100&full=true",
+      "status": 200
+    },
+    "namespace": "code2lora"
+  },
+  "probe_utc": "2026-06-18T21:29:14.908260+00:00",
+  "schema": 1,
+  "scope": "public artifacts cited by arXiv:2606.06492"
+}

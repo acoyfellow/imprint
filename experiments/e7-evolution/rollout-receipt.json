@@ -1,0 +1,13 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e7-evolution-rollout",
+  "repository": "BayesWitnesses/m2cgen",
+  "commits": 144,
+  "firstCommit": "2e373c448afddb23369c30a7ea9df6b14664fb28",
+  "lastCommit": "b0f76ef3ad287ced9fc777ecd2a97300180aa9d2",
+  "firstAdapterDigest": "3b073c35c030fc5ee3c53c19801905e4652970b15cd0eae1b4512671f95c2a68",
+  "lastAdapterDigest": "69b4913d7796ed38720045a9f3e7ca4b86642c5806400e19c640d3113acb18a4",
+  "uniqueAdapters": 144,
+  "changedAcrossHistory": true,
+  "passed": true
+}

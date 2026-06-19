@@ -7,3 +7,5 @@ site/bundles.generated.ts
 .alchemy
 .wrangler
 .imprint
+experiments/**/adapter.pt
+experiments/**/run.log

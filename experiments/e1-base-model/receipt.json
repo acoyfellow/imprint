@@ -1,0 +1,15 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e1-base-model",
+  "model": "Qwen/Qwen2.5-Coder-1.5B",
+  "requestedRevision": "main",
+  "resolvedCommit": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
+  "device": "mps",
+  "platform": "macOS-26.4.1-arm64-arm-64bit",
+  "prompt": "Complete only the assertion value:\nresult = 19 + 23\nassert result ==",
+  "output": " 42\nThe assertion value is 42.",
+  "inputTokens": 19,
+  "loadSeconds": 307.302,
+  "inferenceSeconds": 3.317,
+  "passed": true
+}

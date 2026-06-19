@@ -1,0 +1,33 @@
+{
+  "schema": "imprint.experiment.v1",
+  "experiment": "e2-repo-encoder",
+  "dataset": "code2lora/code2lora-data-snapshots",
+  "file": "commits/train.parquet",
+  "columns": [
+    "repo_id",
+    "cross_repo_split",
+    "commit_index",
+    "commit_sha",
+    "commit_timestamp",
+    "in_repo_split",
+    "n_new_assertions",
+    "n_added_assertions",
+    "n_modified_assertions",
+    "repo_state_embedding"
+  ],
+  "firstRowShape": {
+    "repo_id": "str",
+    "cross_repo_split": "str",
+    "commit_index": "int",
+    "commit_sha": "str",
+    "commit_timestamp": "str",
+    "in_repo_split": "str",
+    "n_new_assertions": "int",
+    "n_added_assertions": "int",
+    "n_modified_assertions": "int",
+    "repo_state_embedding": 2048
+  },
+  "has2048DimRepositoryEmbedding": true,
+  "finite": true,
+  "passed": true
+}
