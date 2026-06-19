@@ -102,6 +102,8 @@ The included [experiments](experiments) use the paper's public source, checkpoin
 
 Workers AI does not currently expose the paper's exact base model or arbitrary adapter loading, so that inference ran locally on Apple silicon.
 
+The [local Code2LoRA backend](experiments/code2lora-local) packages generated weights as a backend-neutral artifact (`adapter_model.safetensors`, config, manifest, and receipt) and runs exact base-vs-adapter evaluation. Library consumers can validate that directory with `openAdapterArtifact(path)`. This reference backend does not imply Cloudflare-native adapter inference.
+
 ## Status
 
 `0.0.1`. Real Git commits. Real Workers AI. No mock repository state.

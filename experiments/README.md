@@ -14,3 +14,5 @@ Each directory asks one binary question about reproducing [Code2LoRA](https://ar
 | E8 Cloudflare-native model path | Blocked | Workers AI lacks the exact base model and a documented arbitrary adapter upload/select API. |
 
 These are feasibility receipts, not reproduction of the paper's complete benchmark tables. E6 full evaluation and an E7 quality comparison remain.
+
+The [local Code2LoRA backend](code2lora-local) turns the E3–E5 path into a reusable `imprint.adapter.v1` artifact and runs deterministic base-vs-adapter exact-match evaluation on Apple silicon. It is a local reference backend, not Cloudflare-native adapter inference.

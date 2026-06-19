@@ -28,6 +28,17 @@ export interface ImprintRelease {
   status: 'candidate' | 'active' | 'rejected' | 'revoked';
 }
 
+export interface AdapterArtifact {
+  schema: 'imprint.adapter.v1';
+  id: string;
+  backend: string;
+  createdAt: string;
+  baseModel: { id: string; revision: string | null };
+  source: { repository: string; commit: string; digest?: string };
+  adapter: { format: string; rank: number; alpha: number; targetModules: string[] };
+  files: Record<string, { bytes: number; sha256: string | null }>;
+}
+
 export interface ModelProvider {
   generate(input: {
     system: string;
