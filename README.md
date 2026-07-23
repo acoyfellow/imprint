@@ -87,6 +87,7 @@ A release records the repository, commit, selected files, source digest, and con
 ```bash
 curl -X POST https://<your-worker>.workers.dev \
   -H 'content-type: application/json' \
+  -H "Authorization: Bearer $ASK_API_TOKEN" \
   -d '{
     "repository": "acoyfellow/imprint",
     "commit": "<git-sha>",
@@ -95,6 +96,10 @@ curl -X POST https://<your-worker>.workers.dev \
 ```
 
 `0.0.1` accepts public GitHub repositories. It selects up to 40 text files and 300 KB per request, then sends that commit-bound context to Workers AI.
+
+**Auth (fail-closed).** The ask endpoint runs Workers AI on your account, so it is never anonymous. Set `ASK_API_TOKEN` (a Worker secret); every ask request must send `Authorization: Bearer $ASK_API_TOKEN`. Without the token configured the endpoint returns `503`; with a missing or wrong bearer it returns `401`. For local development, `DEV_MODE=true` bypasses the check. Put the deployed route behind Cloudflare Access and use an Access service token for agent callers.
+
+**GitHub rate limit.** The source fetch is unauthenticated by default (~60 requests/hour, then `HTTP 403`). Set `GITHUB_TOKEN` (a Worker secret) to raise it to 5000/hour.
 
 ## Code2LoRA feasibility
 
