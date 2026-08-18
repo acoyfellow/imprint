@@ -64,4 +64,24 @@ describe('Imprint', () => {
     await imprint.rollback(one);
     expect((await imprint.open()).release.commit).toBe(one);
   });
+
+  test('refuses a commit that carries the broken marker', async () => {
+    const directory = await repository();
+    await writeFile(join(directory, 'api.ts'), 'export const ok = true;\n');
+    await git(directory, 'add', '.');
+    await git(directory, 'commit', '-qm', 'good');
+    const good = await git(directory, 'rev-parse', 'HEAD');
+    await writeFile(join(directory, 'api.ts'), 'export const ok = "IMPRINT_BROKEN";\n');
+    await git(directory, 'commit', '-qam', 'bad');
+    const bad = await git(directory, 'rev-parse', 'HEAD');
+
+    const imprint = new Imprint({ directory });
+    const goodRelease = await imprint.imprint(good);
+    const badRelease = await imprint.imprint(bad);
+    expect(goodRelease.proof.verified).toBe(true);
+    expect(badRelease.proof.verified).toBe(false);
+    await expect(imprint.promote(bad)).rejects.toThrow('did not verify');
+    await imprint.promote(good);
+    expect((await imprint.open()).release.commit).toBe(good);
+  });
 });

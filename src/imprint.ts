@@ -30,6 +30,19 @@ function citations(text: string, files: ImprintRelease['files']): string[] {
   return files.filter((file) => text.includes(file.path)).map((file) => file.path);
 }
 
+const BROKEN = 'IMPRINT_BROKEN';
+
+export function defaultChecks(files: ImprintRelease['files']): ImprintRelease['proof']['checks'] {
+  const hit = files.find((file) => file.content.includes(BROKEN));
+  return [
+    {
+      name: 'no-broken-marker',
+      passed: !hit,
+      detail: hit ? `${hit.path} contains ${BROKEN}` : 'no broken marker',
+    },
+  ];
+}
+
 export class Imprint {
   readonly directory: string;
   private readonly options: ImprintOptions;
@@ -53,6 +66,13 @@ export class Imprint {
     const sourceDigest = await digest(JSON.stringify({ repository, commit, manifest }));
     const text = adapterText(files);
     const adapterDigest = await digest(text);
+    const extra = await (this.options.checks ?? defaultChecks)(files);
+    const checks = [
+      { name: 'commit-resolved', passed: true, detail: commit },
+      { name: 'source-bound', passed: true, detail: sourceDigest },
+      { name: 'adapter-bound', passed: true, detail: adapterDigest },
+      ...extra,
+    ];
     const release: ImprintRelease = {
       schema: 'imprint.release.v1',
       id: `imp_${sourceDigest.slice(0, 20)}`,
@@ -64,12 +84,8 @@ export class Imprint {
       files,
       adapter: { kind: 'repository-context', digest: adapterDigest, text },
       proof: {
-        verified: true,
-        checks: [
-          { name: 'commit-resolved', passed: true, detail: commit },
-          { name: 'source-bound', passed: true, detail: sourceDigest },
-          { name: 'adapter-bound', passed: true, detail: adapterDigest },
-        ],
+        verified: checks.every((check) => check.passed),
+        checks,
       },
       status: 'candidate',
     };

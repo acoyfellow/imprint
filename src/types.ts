@@ -55,8 +55,15 @@ export interface Answer {
   usage?: Record<string, number>;
 }
 
+export type ImprintCheck = {
+  name: string;
+  passed: boolean;
+  detail: string;
+};
+
 export interface ImprintOptions {
   directory?: string;
   provider?: ModelProvider;
   maxSourceBytes?: number;
+  checks?: (files: SourceFile[]) => ImprintCheck[] | Promise<ImprintCheck[]>;
 }
