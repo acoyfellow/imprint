@@ -8,7 +8,7 @@
   }
 </script>
 
-<svelte:head><title>Imprint — every commit gets its own repository-aware LLM</title></svelte:head>
+<svelte:head><title>Imprint — every commit gets a proven snapshot</title></svelte:head>
 
 <header>
   <a class="brand" href="/" aria-label="Imprint home"><span class="mark">I</span><strong>Imprint</strong></a>
@@ -21,8 +21,8 @@
     <div class="orb orb-one"></div><div class="orb orb-two"></div>
     <div class="hero-copy">
       <p class="eyebrow">Repository intelligence / 0.0.1</p>
-      <h1>Every commit gets its own<br /><em>repository-aware LLM.</em></h1>
-      <p class="lede">Turn a Git commit into repository context an LLM can use—and prove exactly which source it learned.</p>
+      <h1>Every commit gets a<br /><em>proven snapshot of the repo.</em></h1>
+      <p class="lede">Bind selected source to an exact Git commit, run checks, and refuse promote when a check fails. Ask is optional.</p>
       <div class="hero-snippet"><pre><code><span class="blue">import</span> &#123; Imprint, WorkersAiProvider &#125; <span class="blue">from</span> <span class="orange">'imprint'</span>;
 
 <span class="blue">const</span> imprint = <span class="blue">new</span> Imprint(&#123;

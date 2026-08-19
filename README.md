@@ -1,10 +1,13 @@
 # Imprint
 
-**Every commit gets its own repository-aware LLM.**
+**Every commit gets a proven snapshot of the repo.**
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/acoyfellow/imprint)
 
-Imprint binds repository knowledge to an exact Git commit, proves the binding, and lets an LLM answer against that version of the codebase.
+Imprint binds selected source files to an exact Git commit, records digests, and
+runs checks. `proof.verified` is true only if every check passed. Promote refuses
+an unverified release. `ask` can send that snapshot to Workers AI. The snapshot
+is concatenated source, not a trained adapter.
 
 ```ts
 const repo = await imprint.open('abc123');
@@ -31,6 +34,9 @@ bun run prove
 ```
 
 The proof creates two commits with different APIs, imprints both, promotes the new one, and rolls back to the old one.
+A commit whose source contains `IMPRINT_BROKEN` gets `proof.verified: false`.
+Promote throws on that release. `mcpu` `repo.deploy` reads
+`.imprint/releases/<commit>.json` and refuses unless `proof.verified` is true.
 
 Run the same commit-bound question through real Workers AI:
 
@@ -72,15 +78,16 @@ await imprint.rollback('HEAD~1');
 
 ```text
 commit
-  → immutable source manifest
-  → commit-bound context
-  → source and context digests
-  → Workers AI inference
+  immutable source manifest
+  concatenated context
+  source and context digests
+  checks, then proof.verified
+  optional Workers AI ask
 ```
 
-A release records the repository, commit, selected files, source digest, and context digest. Promotion and rollback move the local release pointer.
+A release records the repository, commit, selected files, source digest, context digest, and check results. Promotion and rollback move the local release pointer.
 
-`0.0.1` sends commit-bound repository context to Workers AI. It does not generate a LoRA adapter yet. The experiment was inspired by [Code2LoRA](https://arxiv.org/abs/2606.06492).
+`0.0.1` sends that concatenated context to Workers AI. It does not generate a LoRA adapter. The Code2LoRA experiment is separate. See [Code2LoRA](https://arxiv.org/abs/2606.06492).
 
 ## Worker API
 
