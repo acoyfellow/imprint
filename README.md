@@ -94,7 +94,7 @@ Measured via `bun proof/prove-mcp.ts` against `cloudflare/mcp` (`b8602d6d5ce5`,
 ## API
 
 ```ts
-import { Imprint, WorkersAiProvider } from 'imprint';
+import { Imprint, WorkersAiProvider } from '@acoyfellow/imprint';
 
 const imprint = new Imprint({
   directory: './repo',

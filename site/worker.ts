@@ -13,7 +13,7 @@ const description =
 const head = [
   `<meta name="description" content="${description}">`,
   '<link rel="canonical" href="https://imprint.coey.dev/">',
-  '<meta name="theme-color" content="#07111a">',
+  '<meta name="theme-color" content="#16191d">',
   '<meta property="og:type" content="website">',
   '<meta property="og:title" content="Imprint — every commit gets a queryable repo artifact">',
   `<meta property="og:description" content="${description}">`,

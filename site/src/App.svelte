@@ -1,126 +1,1727 @@
 <script lang="ts">
-  let copied = $state(false);
-  const proofCommand = 'bun run prove';
-  async function copyProof() {
-    await navigator.clipboard.writeText(proofCommand);
-    copied = true;
-    setTimeout(() => (copied = false), 1400);
+  import { onMount } from 'svelte';
+
+  type StageNum = 1 | 2 | 3 | 4;
+  type QueryId = 'symbol' | 'deps' | 'budget' | 'changed';
+  type TokenKind = 'plain' | 'kw' | 'str' | 'num' | 'fn' | 'prop' | 'cmt' | 'flag' | 'cmd';
+  type CodeToken = { kind: TokenKind; text: string };
+
+  let stage = $state<StageNum>(4);
+  let manualHold = $state(false);
+  let activeQuery = $state<QueryId>('deps');
+  let copiedKey = $state<string | null>(null);
+
+  const installCmd = 'bun add github:acoyfellow/imprint';
+
+  const stages: Array<{
+    num: StageNum;
+    short: string;
+    name: string;
+    metric: string;
+    summary: string;
+    ascii: string;
+  }> = [
+    {
+      num: 1,
+      short: 'index',
+      name: '1. COMPLETE MANIFEST',
+      metric: '2,304 / 2,304 TRACKED',
+      summary:
+        'git ls-tree -r -l -z indexes every tracked blob at the exact SHA and isolates generated trees.',
+      ascii: `░▒▓ STAGE 01 // MANIFEST ▓▒░
+┌──────────────────────────────────┐
+│ commit   b8602d6d5ce5            │
+│ tracked  2,304 blobs (53.0 MB)   │
+│ ├─ src/       60 files  [SOURCE] │
+│ ├─ tests/     56 files  [TEST]   │
+│ └─ generated/ 2,148     [MUTED]  │
+└──────────────────────────────────┘`,
+    },
+    {
+      num: 2,
+      short: 'map',
+      name: '2. AST SYMBOL + IMPORT MAP',
+      metric: '22.5 KB · 0 PARSE ERRORS',
+      summary:
+        'oxc-parser maps exports, declarations, and resolved local import edges across every source file.',
+      ascii: `░▒▓ STAGE 02 // AST MAP ▓▒░
+┌──────────────────────────────────┐
+│ src/index.ts                     │
+│  ├─ exp: GlobalOutbound, default │
+│  ├─▶ src/mcp-handler.ts          │
+│  ├─▶ src/tools/execute.ts        │
+│  └─▶ src/auth/oauth-handler.ts   │
+│ total: 350 exp · 365 local edges │
+└──────────────────────────────────┘`,
+    },
+    {
+      num: 3,
+      short: 'slice',
+      name: '3. ON-DEMAND GRAPH SLICING',
+      metric: 'git cat-file --batch',
+      summary:
+        'Compose symbols, globs, regex grep, N-hop imports, and diffs with explicit byte budgets.',
+      ascii: `░▒▓ STAGE 03 // OID SLICE ▓▒░
+┌──────────────────────────────────┐
+│ query   depsOf("src/index.ts",2) │
+│ stream  git cat-file --batch     │
+│ result  37 files · 0 generated   │
+│ budget  [████████░░] 248/400 KB  │
+│ drops   0 silent (omitted[] log) │
+└──────────────────────────────────┘`,
+    },
+    {
+      num: 4,
+      short: 'verified',
+      name: '4. COMMIT PROOF GATE',
+      metric: 'VERIFIED · 188 MS',
+      summary:
+        'Lean release JSON stores manifest, AST map, digests, and repo-wide checks—zero file blobs.',
+      ascii: `░▒▓ STAGE 04 // PROOF GATE ▓▒░
+┌──────────────────────────────────┐
+│ [✓] commit-resolved   b8602d6    │
+│ [✓] manifest-complete 2304/2304  │
+│ [✓] source-coverage   60/60 src  │
+│ [✓] map-bound         22.5 KB    │
+│ [✓] no-broken-marker  repo-wide  │
+└──────────────┬───────────────────┘
+               ▼ promote -> ACTIVE`,
+    },
+  ];
+
+  const footerAscii = [
+    ' ___ __  __ ___ ___ ___ _  _ _____ ',
+    '|_ _|  \\/  | _ \\ _ \\_ _| \\| |_   _|',
+    ' | || |\\/| |  _/   /| || .` | | |  ',
+    '|___|_|  |_|_| |_|_\\___|_|\\_| |_|  ',
+  ].join('\n');
+
+  const TS_KEYWORDS = new Set([
+    'import',
+    'from',
+    'const',
+    'let',
+    'new',
+    'await',
+    'async',
+    'return',
+    'export',
+    'type',
+  ]);
+
+  function tokenizeTs(code: string): CodeToken[] {
+    const tokens: CodeToken[] = [];
+    const re =
+      /(\/\/[^\n]*|'[^']*'|"[^"]*"|\b\d[\d_]*\b|\b[A-Za-z_$][A-Za-z0-9_$]*\b(?=\s*\()|\b[A-Za-z_$][A-Za-z0-9_$]*\b(?=\s*:)|\b[A-Za-z_$][A-Za-z0-9_$]*\b)/g;
+    let last = 0;
+    for (const match of code.matchAll(re)) {
+      const idx = match.index ?? 0;
+      if (idx > last) tokens.push({ kind: 'plain', text: code.slice(last, idx) });
+      const text = match[0];
+      let kind: TokenKind = 'plain';
+      if (text.startsWith('//')) kind = 'cmt';
+      else if (text.startsWith("'") || text.startsWith('"')) kind = 'str';
+      else if (/^\d/.test(text)) kind = 'num';
+      else if (TS_KEYWORDS.has(text)) kind = 'kw';
+      else if (code[idx + text.length] === '(') kind = 'fn';
+      else if (code[idx + text.length] === ':') kind = 'prop';
+      tokens.push({ kind, text });
+      last = idx + text.length;
+    }
+    if (last < code.length) tokens.push({ kind: 'plain', text: code.slice(last) });
+    return tokens;
+  }
+
+  function tokenizeCli(command: string): CodeToken[] {
+    const tokens: CodeToken[] = [];
+    const re = /('[^']*'|"[^"]*"|--[a-z-]+|\b\d+\b|\S+)/g;
+    let last = 0;
+    let wordIndex = 0;
+    for (const match of command.matchAll(re)) {
+      const idx = match.index ?? 0;
+      if (idx > last) tokens.push({ kind: 'plain', text: command.slice(last, idx) });
+      const text = match[0];
+      let kind: TokenKind = 'plain';
+      if (wordIndex === 0) kind = 'cmd';
+      else if (wordIndex === 1 && !text.startsWith('-')) kind = 'fn';
+      else if (text.startsWith('--')) kind = 'flag';
+      else if (text.startsWith("'") || text.startsWith('"')) kind = 'str';
+      else if (/^\d+$/.test(text)) kind = 'num';
+      tokens.push({ kind, text });
+      last = idx + text.length;
+      wordIndex += 1;
+    }
+    if (last < command.length) tokens.push({ kind: 'plain', text: command.slice(last) });
+    return tokens;
+  }
+
+  const sdkMapSnippet = `import { Imprint } from '@acoyfellow/imprint';
+
+const imprint = new Imprint({ directory: './repo' });
+const repo = await imprint.open('HEAD');
+
+console.log(repo.renderMap());
+const slice = await repo.slice({
+  symbols: ['GlobalOutbound'],
+  depsOf: 'src/index.ts',
+  depth: 2,
+  maxBytes: 32_000,
+});`;
+
+  const sdkGateSnippet = `const release = await imprint.imprint('HEAD');
+if (!release.proof.verified) {
+  throw new Error('Commit failed proof gate');
+}
+
+await imprint.promote(release.commit);
+await imprint.rollback('HEAD~1');
+const diff = await imprint.diff('HEAD~1', 'HEAD');`;
+
+  const queries: Record<
+    QueryId,
+    {
+      chip: string;
+      cli: string;
+      sdk: string;
+      matched: string;
+      usedPct: number;
+      budgetLabel: string;
+      files: string[];
+      note: string;
+    }
+  > = {
+    symbol: {
+      chip: '--symbol GlobalOutbound',
+      cli: 'imprint slice HEAD --symbol GlobalOutbound --symbol oauthMcpHandler',
+      sdk: "await repo.slice({ symbols: ['GlobalOutbound', 'oauthMcpHandler'] })",
+      matched: '3 FILES',
+      usedPct: 18,
+      budgetLabel: '19.4 KB / 400 KB',
+      files: ['src/index.ts', 'src/mcp-handler.ts', 'src/tools/execute.ts'],
+      note: 'Instant AST symbol lookup at the exact commit—zero blind directory scans.',
+    },
+    deps: {
+      chip: '--deps-of src/index.ts',
+      cli: 'imprint slice HEAD --deps-of src/index.ts --depth 2',
+      sdk: "await repo.slice({ depsOf: 'src/index.ts', depth: 2 })",
+      matched: '37 FILES',
+      usedPct: 62,
+      budgetLabel: '248 KB / 400 KB',
+      files: [
+        'src/index.ts',
+        'src/mcp-handler.ts',
+        'src/tools/execute.ts',
+        'src/auth/oauth-handler.ts',
+        'src/skills/sync.ts',
+        '+32 transitive local imports',
+      ],
+      note: 'BFS traversal over resolved local AST edges; hop-0 entrypoints prioritized first.',
+    },
+    budget: {
+      chip: '--max-bytes 8000',
+      cli: "imprint slice HEAD --path 'src/tools/*.ts' --max-bytes 8000",
+      sdk: "await repo.slice({ paths: ['src/tools/*.ts'], maxBytes: 8_000 })",
+      matched: '3 / 10 FILES',
+      usedPct: 77,
+      budgetLabel: '6,168 B / 8,000 B (7 OMITTED)',
+      files: [
+        'src/tools/api-call-result.ts  [INCLUDED]',
+        'src/tools/response-body.ts    [INCLUDED]',
+        'src/tools/tool-error.ts       [INCLUDED]',
+        'src/tools/execute.ts          [OMITTED: budget]',
+        '+6 more reported in truncation.omitted',
+      ],
+      note: 'Hard byte or token cap with explicit truncation.omitted reporting.',
+    },
+    changed: {
+      chip: '--changed HEAD~1',
+      cli: 'imprint slice HEAD --changed HEAD~1 --text',
+      sdk: "await repo.slice({ changed: 'HEAD~1' })",
+      matched: '7 FILES',
+      usedPct: 24,
+      budgetLabel: '31.2 KB / 400 KB',
+      files: [
+        'src/server.ts',
+        'src/tools/forge-tools.ts',
+        'src/tools/submit-feedback.ts',
+        'src/tools/tool-error.ts',
+        'src/tools/tool-list-response.ts',
+        'tests/submit-feedback.test.ts',
+        'wrangler.jsonc',
+      ],
+      note: 'Commit-to-commit diff automatically filters out generated noise.',
+    },
+  };
+
+  function pickStage(next: StageNum) {
+    manualHold = true;
+    stage = next;
+  }
+
+  onMount(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      stage = 4;
+      return;
+    }
+    stage = 1;
+    let timer: ReturnType<typeof setTimeout>;
+    const schedule = () => {
+      const waitMs = stage === 4 ? 3200 : 1500;
+      timer = setTimeout(() => {
+        if (manualHold) return;
+        stage = (stage === 4 ? 1 : stage + 1) as StageNum;
+        schedule();
+      }, waitMs);
+    };
+    schedule();
+    return () => clearTimeout(timer);
+  });
+
+  async function copyText(key: string, value: string) {
+    await navigator.clipboard.writeText(value);
+    copiedKey = key;
+    setTimeout(() => {
+      if (copiedKey === key) copiedKey = null;
+    }, 1400);
   }
 </script>
 
-<svelte:head><title>Imprint — every commit gets a queryable repo artifact</title></svelte:head>
+<svelte:head>
+  <title>IMPRINT — commit-bound repo artifact</title>
+</svelte:head>
 
-<header>
-  <a class="brand" href="/" aria-label="Imprint home"><span class="mark">I</span><strong>Imprint</strong></a>
-  <nav><a href="#proof">Proof</a><a href="#examples">Examples</a><a href="#how">How</a><a href="https://github.com/acoyfellow/imprint">GitHub ↗</a></nav>
-</header>
-
-<main>
-  <section class="hero">
-    <div class="grid"></div>
-    <div class="orb orb-one"></div><div class="orb orb-two"></div>
-    <div class="hero-copy">
-      <p class="eyebrow">Commit-bound repo artifact / release v2</p>
-      <h1>Every commit gets a<br /><em>queryable repo artifact.</em></h1>
-      <p class="lede">Index 100% of tracked files with zero silent drops, build a compact AST symbol &amp; import map, slice by symbol or dependency graph on demand, and refuse promote unless every check passes.</p>
-      <div class="hero-snippet"><pre><code><span class="blue">import</span> &#123; Imprint &#125; <span class="blue">from</span> <span class="orange">'imprint'</span>;
-
-<span class="blue">const</span> imprint = <span class="blue">new</span> Imprint(&#123; directory: <span class="orange">'./repo'</span> &#125;);
-<span class="blue">const</span> repo = <span class="blue">await</span> imprint.open(<span class="orange">'HEAD'</span>);
-
-<span class="blue">const</span> map = repo.renderMap();
-<span class="blue">const</span> slice = <span class="blue">await</span> repo.slice(&#123;
-  symbols: [<span class="orange">'GlobalOutbound'</span>],
-  depsOf: <span class="orange">'src/index.ts'</span>,
-  depth: <span class="orange">2</span>,
-  maxBytes: <span class="orange">32_000</span>,
-&#125;);</code></pre></div>
-      <div class="actions"><a class="primary" href="https://deploy.workers.cloudflare.com/?url=https://github.com/acoyfellow/imprint">Install in your Cloudflare account <span>↗</span></a><a href="https://github.com/acoyfellow/imprint">Read the source</a></div>
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="Imprint home">
+        <span class="stamp" aria-hidden="true">▓</span>
+        <strong>IMPRINT</strong>
+        <span class="rev">V2</span>
+      </a>
+      <div class="top-meta">
+        <span class="chip-live"><i aria-hidden="true"></i> 0 SILENT DROPS</span>
+        <nav>
+          <a href="#capabilities">SPEC</a>
+          <a href="#query">SLICE</a>
+          <a href="#sdk">SDK</a>
+          <a href="https://github.com/acoyfellow/imprint">GITHUB ↗</a>
+        </nav>
+      </div>
     </div>
-    <div class="artifact" aria-hidden="true">
-      <div class="glass back"></div><div class="glass middle"></div><div class="glass front"><span>commit</span><b>b8602d6</b><i></i><small>2,304 / 2,304 indexed<br />22.5 KB AST map<br />0 silent drops</small></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-left">
+        <p class="eyebrow">░▒▓ COMMIT-BOUND REPO ARTIFACT</p>
+        <h1>
+          TURN ANY GIT<br />
+          COMMIT INTO A<br />
+          <em>QUERYABLE MAP.</em>
+        </h1>
+        <p class="sub">
+          Index 100% of tracked files, compile a compact <code>oxc-parser</code> AST symbol
+          &amp; import map, and slice exact blobs on demand by <code>oid</code>—with honest
+          proof gates on every release.
+        </p>
+
+        <ol class="step-rail" aria-label="Imprint lifecycle stages">
+          {#each stages as s}
+            <li>
+              <button
+                type="button"
+                class:on={stage === s.num}
+                class:done={stage > s.num}
+                onclick={() => pickStage(s.num)}
+              >
+                <span class="tick" class:on={stage === s.num} class:done={stage > s.num}></span>
+                {s.num} {s.short}
+              </button>
+            </li>
+          {/each}
+        </ol>
+
+        <div class="install-box">
+          <span class="sig">$</span>
+          <code>{#each tokenizeCli(installCmd) as tok}<span class={`tok-${tok.kind}`}>{tok.text}</span>{/each}</code>
+          <button type="button" onclick={() => copyText('install', installCmd)}>
+            {copiedKey === 'install' ? 'COPIED ✓' : 'COPY'}
+          </button>
+        </div>
+
+        <div class="actions">
+          <a
+            class="cta warm"
+            href="https://deploy.workers.cloudflare.com/?url=https://github.com/acoyfellow/imprint"
+          >
+            DEPLOY WORKER ↗
+          </a>
+          <button
+            type="button"
+            class="cta"
+            onclick={() => copyText('prove', 'bun run prove')}
+          >
+            {copiedKey === 'prove' ? 'COPIED: bun run prove ✓' : 'RUN: bun run prove'}
+          </button>
+          <a class="cta dim" href="https://github.com/acoyfellow/imprint">SOURCE ↗</a>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="die-bench" data-stage={stage}>
+          <div class="bench-head">
+            <span>COMMIT STACK · {stages[stage - 1].short.toUpperCase()}</span>
+            <span class="sha" class:verified={stage === 4}>
+              {stage === 4 ? 'PROOF VERIFIED ✓' : 'SHA b8602d6'}
+            </span>
+          </div>
+
+          <div class="strata-wrap dither-field">
+            <svg
+              class="strata-svg"
+              viewBox="0 0 384 268"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              shape-rendering="crispEdges"
+              aria-label="Animated dithered isometric Imprint commit layers"
+            >
+              <defs>
+                <pattern id="ditherSage" width="4" height="4" patternUnits="userSpaceOnUse">
+                  <rect width="4" height="4" fill="#1b2622" />
+                  <rect x="0" y="0" width="2" height="2" fill="#7ec4a0" fill-opacity="0.22" />
+                  <rect x="2" y="2" width="2" height="2" fill="#7ec4a0" fill-opacity="0.22" />
+                </pattern>
+                <pattern id="ditherAmber" width="4" height="4" patternUnits="userSpaceOnUse">
+                  <rect width="4" height="4" fill="#282019" />
+                  <rect x="0" y="0" width="2" height="2" fill="#e28743" fill-opacity="0.26" />
+                  <rect x="2" y="2" width="2" height="2" fill="#e28743" fill-opacity="0.26" />
+                </pattern>
+                <pattern id="ditherSky" width="4" height="4" patternUnits="userSpaceOnUse">
+                  <rect width="4" height="4" fill="#1d242e" />
+                  <rect x="0" y="0" width="2" height="2" fill="#8eb2d9" fill-opacity="0.24" />
+                  <rect x="2" y="2" width="2" height="2" fill="#8eb2d9" fill-opacity="0.24" />
+                </pattern>
+                <pattern id="ditherDim" width="4" height="4" patternUnits="userSpaceOnUse">
+                  <rect width="4" height="4" fill="#1b1f25" />
+                  <rect x="0" y="0" width="1" height="1" fill="#6f7270" fill-opacity="0.28" />
+                  <rect x="2" y="2" width="1" height="1" fill="#6f7270" fill-opacity="0.28" />
+                </pattern>
+              </defs>
+
+              <g opacity="0.35" stroke="#75787a" stroke-width="1">
+                <path
+                  class="rail-draw"
+                  class:on={stage >= 2}
+                  pathLength="1"
+                  d="M216 198 L216 132"
+                  stroke="#7ec4a0"
+                />
+                <path
+                  class="rail-draw"
+                  class:on={stage >= 3}
+                  pathLength="1"
+                  d="M216 132 L216 66"
+                  stroke="#e28743"
+                />
+                <line x1="108" y1="74" x2="108" y2="198" stroke-dasharray="2 4" />
+                <line x1="324" y1="74" x2="324" y2="198" stroke-dasharray="2 4" />
+              </g>
+
+              <g
+                class="layer-group"
+                class:lit={stage >= 1}
+                class:focus={stage === 1 || stage === 4}
+                role="button"
+                tabindex="0"
+                aria-label="Stage 1 Complete Manifest"
+                onclick={() => pickStage(1)}
+                onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pickStage(1)}
+              >
+                <polygon
+                  class="slab-draw"
+                  class:on={stage >= 1}
+                  pathLength="1"
+                  points="216,150 324,198 216,246 108,198"
+                  fill={stage >= 1 ? 'url(#ditherSage)' : 'url(#ditherDim)'}
+                  stroke={stage >= 1 ? '#7ec4a0' : '#525760'}
+                  stroke-width={stage === 1 || stage === 4 ? '1.8' : '1.2'}
+                />
+                <polygon
+                  points="108,198 216,246 216,256 108,208"
+                  fill="#151d1a"
+                  stroke={stage >= 1 ? '#7ec4a0' : '#525760'}
+                  stroke-width="1.1"
+                />
+                <polygon
+                  points="216,246 324,198 324,208 216,256"
+                  fill="#1e2c26"
+                  stroke={stage >= 1 ? '#7ec4a0' : '#525760'}
+                  stroke-width="1.1"
+                />
+                <g class="fade-in" class:on={stage >= 1} fill="#7ec4a0">
+                  <polygon points="216,174 236,183 216,192 196,183" opacity="0.85" />
+                  <polygon points="188,187 208,196 188,205 168,196" opacity="0.55" />
+                  <polygon points="244,187 264,196 244,205 224,196" opacity="0.55" />
+                  <polygon points="216,200 236,209 216,218 196,209" opacity="0.78" />
+                </g>
+                <text x="12" y="203" fill={stage >= 1 ? '#7ec4a0' : '#7b7d78'} font-family="IBM Plex Mono, monospace" font-size="10">L1 MANIFEST</text>
+              </g>
+
+              <g
+                class="layer-group"
+                class:lit={stage >= 2}
+                class:focus={stage === 2 || stage === 4}
+                role="button"
+                tabindex="0"
+                aria-label="Stage 2 AST Symbol Map"
+                onclick={() => pickStage(2)}
+                onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pickStage(2)}
+              >
+                <polygon
+                  class="slab-draw"
+                  class:on={stage >= 2}
+                  pathLength="1"
+                  points="216,84 324,132 216,180 108,132"
+                  fill={stage >= 2 ? 'url(#ditherAmber)' : 'url(#ditherDim)'}
+                  stroke={stage >= 2 ? '#e28743' : '#525760'}
+                  stroke-width={stage === 2 || stage === 4 ? '1.8' : '1.2'}
+                />
+                <polygon
+                  points="108,132 216,180 216,190 108,142"
+                  fill="#211a14"
+                  stroke={stage >= 2 ? '#e28743' : '#525760'}
+                  stroke-width="1.1"
+                />
+                <polygon
+                  points="216,180 324,132 324,142 216,190"
+                  fill="#30241b"
+                  stroke={stage >= 2 ? '#e28743' : '#525760'}
+                  stroke-width="1.1"
+                />
+                <g class="fade-in" class:on={stage >= 2}>
+                  <path
+                    class="rail-draw"
+                    class:on={stage >= 2}
+                    pathLength="1"
+                    d="M216 110 L176 130 L216 152 L256 130 Z"
+                    stroke="#f0ad74"
+                    stroke-width="1.5"
+                  />
+                  <rect class="node-pop" class:on={stage >= 2} style="transition-delay:0ms" x="212" y="106" width="8" height="8" fill="#e28743" />
+                  <rect class="node-pop" class:on={stage >= 2} style="transition-delay:110ms" x="172" y="126" width="8" height="8" fill="#e28743" />
+                  <rect class="node-pop" class:on={stage >= 2} style="transition-delay:220ms" x="252" y="126" width="8" height="8" fill="#e28743" />
+                  <rect class="node-pop" class:on={stage >= 2} style="transition-delay:330ms" x="212" y="148" width="8" height="8" fill="#7ec4a0" />
+                </g>
+                <text x="12" y="137" fill={stage >= 2 ? '#e8a269' : '#7b7d78'} font-family="IBM Plex Mono, monospace" font-size="10">L2 AST MAP</text>
+              </g>
+
+              <g
+                class="layer-group"
+                class:lit={stage >= 3}
+                class:focus={stage === 3 || stage === 4}
+                role="button"
+                tabindex="0"
+                aria-label="Stage 3 On-Demand Slice"
+                onclick={() => pickStage(3)}
+                onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pickStage(3)}
+              >
+                <polygon
+                  class="slab-draw"
+                  class:on={stage >= 3}
+                  pathLength="1"
+                  points="216,18 324,66 216,114 108,66"
+                  fill={stage >= 3 ? 'url(#ditherSky)' : 'url(#ditherDim)'}
+                  stroke={stage >= 3 ? '#8eb2d9' : '#525760'}
+                  stroke-width={stage === 3 || stage === 4 ? '1.8' : '1.2'}
+                />
+                <polygon
+                  points="108,66 216,114 216,124 108,76"
+                  fill="#171d26"
+                  stroke={stage >= 3 ? '#8eb2d9' : '#525760'}
+                  stroke-width="1.1"
+                />
+                <polygon
+                  points="216,114 324,66 324,76 216,124"
+                  fill="#212b38"
+                  stroke={stage >= 3 ? '#8eb2d9' : '#525760'}
+                  stroke-width="1.1"
+                />
+                <g class="fade-in" class:on={stage >= 3}>
+                  <polygon
+                    points="216,42 270,66 216,90 162,66"
+                    fill="none"
+                    stroke="#8eb2d9"
+                    stroke-width="1.4"
+                    stroke-dasharray="4 3"
+                  />
+                  <rect x="211" y="61" width="10" height="10" fill="#eae5d9" />
+                </g>
+                <text x="12" y="71" fill={stage >= 3 ? '#8eb2d9' : '#7b7d78'} font-family="IBM Plex Mono, monospace" font-size="10">L3 SLICE</text>
+              </g>
+
+              {#if stage >= 3}
+                <circle r="3.5" fill="#7ec4a0" class="signal-dot">
+                  <animateMotion dur="2s" repeatCount="indefinite" path="M216 198 L216 132 L216 66" />
+                </circle>
+              {/if}
+              {#if stage === 4}
+                <circle r="3.5" fill="#e28743" class="signal-dot">
+                  <animateMotion dur="2s" begin="1s" repeatCount="indefinite" path="M216 66 L216 132 L216 198" />
+                </circle>
+              {/if}
+            </svg>
+          </div>
+
+          <div class="layer-readout">
+            <div class="readout-top">
+              <strong>{stages[stage - 1].name}</strong>
+              <span class="pill">{stages[stage - 1].metric}</span>
+            </div>
+            <p>{stages[stage - 1].summary}</p>
+            <pre class="ascii-panel"><code>{stages[stage - 1].ascii}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="dither-divider" aria-hidden="true"></div>
+
+    <section class="surface-band" id="capabilities">
+      <div class="container">
+        <div class="sec-head">
+          <span class="tag">░▒▓ 01 · WHAT EVERY COMMIT SHIPS</span>
+          <h2>COMPLETE. COMPACT. VERIFIED.</h2>
+        </div>
+
+        <div class="cap-grid">
+          <article>
+            <div class="cap-top">
+              <span>01 / MANIFEST</span>
+              <b>2,304 / 2,304</b>
+            </div>
+            <h3>ZERO SILENT DROPS</h3>
+            <p>
+              Indexes every tracked blob at the exact Git commit via
+              <code>git ls-tree -r -l -z</code>, classifies source, tests, generated trees,
+              config, and docs, and records full coverage stats.
+            </p>
+            <div class="card-dither" aria-hidden="true"></div>
+          </article>
+
+          <article>
+            <div class="cap-top">
+              <span>02 / AST MAP</span>
+              <b>22.5 KB</b>
+            </div>
+            <h3>WHOLE REPO IN ONE READ</h3>
+            <p>
+              <code>oxc-parser</code> extracts exports, top-level declarations, and resolved local
+              import edges for TS/JS (with fallback parsers for Python, Go, Rust, SQL, and more).
+            </p>
+            <div class="card-dither" aria-hidden="true"></div>
+          </article>
+
+          <article>
+            <div class="cap-top">
+              <span>03 / SLICING</span>
+              <b>ON-DEMAND OID</b>
+            </div>
+            <h3>GRAPH + SYMBOL QUERIES</h3>
+            <p>
+              Compose <code>symbols</code>, <code>paths</code> globs, literal or regex
+              <code>grep</code>, <code>depsOf</code> import traversal, and <code>changed</code>
+              diffs—streamed via <code>git cat-file --batch</code> under strict byte budgets.
+            </p>
+            <div class="card-dither" aria-hidden="true"></div>
+          </article>
+
+          <article>
+            <div class="cap-top">
+              <span>04 / PROOF GATE</span>
+              <b>188 MS</b>
+            </div>
+            <h3>LEAN ARTIFACT. HARD GATE.</h3>
+            <p>
+              Persists manifest, AST map, digests, and whole-repo checks to
+              <code>.imprint/releases/&lt;sha&gt;.json</code> with zero duplicated file blobs.
+              <code>promote</code> refuses any unverified commit.
+            </p>
+            <div class="card-dither" aria-hidden="true"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <div class="dither-divider flip" aria-hidden="true"></div>
+
+    <section class="base-band" id="query">
+      <div class="container">
+        <div class="sec-head">
+          <span class="tag">░▒▓ 02 · INTERACTIVE SLICE SIMULATOR</span>
+          <h2>QUERY THE EXACT COMMIT.</h2>
+        </div>
+
+        <div class="query-chips" role="tablist" aria-label="Slice queries">
+          {#each Object.entries(queries) as [id, item]}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeQuery === id}
+              class:active={activeQuery === id}
+              onclick={() => (activeQuery = id as QueryId)}
+            >
+              {item.chip}
+            </button>
+          {/each}
+        </div>
+
+        <div class="query-deck">
+          <div class="deck-left">
+            <div class="kv">
+              <span>CLI</span>
+              <code>{#each tokenizeCli(queries[activeQuery].cli) as tok}<span class={`tok-${tok.kind}`}>{tok.text}</span>{/each}</code>
+              <button
+                type="button"
+                class="mini-copy"
+                onclick={() => copyText(activeQuery, queries[activeQuery].cli)}
+              >
+                {copiedKey === activeQuery ? '✓' : 'COPY'}
+              </button>
+            </div>
+            <div class="kv">
+              <span>SDK</span>
+              <code>{#each tokenizeTs(queries[activeQuery].sdk) as tok}<span class={`tok-${tok.kind}`}>{tok.text}</span>{/each}</code>
+            </div>
+            <div class="budget-meter">
+              <div class="budget-top">
+                <span>MATCHED: <b>{queries[activeQuery].matched}</b></span>
+                <span>{queries[activeQuery].budgetLabel}</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-fill" style={`width:${queries[activeQuery].usedPct}%`}></div>
+              </div>
+              <p class="deck-note">{queries[activeQuery].note}</p>
+            </div>
+          </div>
+
+          <div class="deck-right">
+            <div class="file-head">┌─ COMMIT-BOUND FILES (VIA GIT OID)</div>
+            <ul class="file-list">
+              {#each queries[activeQuery].files as file}
+                <li>{file}</li>
+              {/each}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="dither-divider" aria-hidden="true"></div>
+
+    <section class="surface-band" id="sdk">
+      <div class="container">
+        <div class="sec-head">
+          <span class="tag">░▒▓ 03 · INSTALL FROM GITHUB</span>
+          <h2>TWO CALLS TO START.</h2>
+        </div>
+
+        <div class="sdk-grid">
+          <article>
+            <div class="card-top">
+              <span>01 / MAP &amp; SLICE</span>
+              <em>OFFLINE · NO API KEY NEEDED</em>
+            </div>
+            <pre><code>{#each tokenizeTs(sdkMapSnippet) as tok}<span class={`tok-${tok.kind}`}>{tok.text}</span>{/each}</code></pre>
+          </article>
+
+          <article>
+            <div class="card-top">
+              <span>02 / VERIFY &amp; GATE</span>
+              <em>REFUSES UNVERIFIED COMMITS</em>
+            </div>
+            <pre><code>{#each tokenizeTs(sdkGateSnippet) as tok}<span class={`tok-${tok.kind}`}>{tok.text}</span>{/each}</code></pre>
+          </article>
+        </div>
+
+        <div class="gh-bar">
+          <span>GITHUB PACKAGE</span>
+          <code>{#each tokenizeCli(installCmd) as tok}<span class={`tok-${tok.kind}`}>{tok.text}</span>{/each}</code>
+          <button type="button" onclick={() => copyText('gh-foot', installCmd)}>
+            {copiedKey === 'gh-foot' ? 'COPIED ✓' : 'COPY'}
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <pre class="ascii-logo" aria-hidden="true">{footerAscii}</pre>
+      <div class="footer-meta">
+        <span>IMPRINT · MIT · GITHUB:ACOYFELLOW/IMPRINT</span>
+        <span>BUILT ON CLOUDFLARE <i aria-hidden="true"></i></span>
+      </div>
     </div>
-    <p class="coordinate">IMP–002<br />COMMIT → MAP → SLICE → PROOF</p>
-  </section>
-
-  <section class="proof" id="proof">
-    <div class="section-head"><div><p class="eyebrow">01 / Proven on real repos</p><h2>Zero silent drops.<br />Whole architecture in 22 KB.</h2></div><p>Tested on <code>cloudflare/mcp</code> (2,304 tracked files, 53 MB, 2,148 generated files) and verified in CI. Full commit imprint runs in 188 ms with zero raw file blobs duplicated in release JSON.</p></div>
-    <div class="metrics">
-      <article><b>2,304 / 2,304</b><span>tracked files indexed · 0 silent drops</span></article>
-      <article><b>60 / 60</b><span>real src/ files AST-mapped (100%)</span></article>
-      <article><b>22.5 KB</b><span>compact map · 350 exports · 365 edges</span></article>
-      <article><b>188 ms</b><span>full imprint · on-demand git blob reads</span></article>
-    </div>
-    <div class="terminal">
-      <div class="terminal-bar"><span></span><span></span><span></span><b>imprint · proof</b></div>
-      <pre><code><span class="muted">$</span> {proofCommand}
-
-<span class="orange">old</span>       2ae3c8a  <span class="green">✓ knows createSession · 0 silent drops</span>
-<span class="blue">next</span>      17fd80d  <span class="green">✓ knows openSession · depsOf → src/session.ts, src/token.ts</span>
-<span class="muted">diff</span>                 src/session.ts changed
-<span class="muted">rollback</span>             <span class="green">✓ exact old release active</span></code></pre>
-      <button onclick={copyProof}>{copied ? 'Copied' : 'Copy command'}</button>
-    </div>
-  </section>
-
-  <section class="examples" id="examples">
-    <div class="section-head"><div><p class="eyebrow">02 / Use it</p><h2>Map first.<br />Slice only what you need.</h2></div><p>Every local command works offline against exact Git commits. File bytes are loaded on demand by Git OID via <code>git cat-file --batch</code>.</p></div>
-    <div class="example-stack">
-      <article>
-        <div><span>01</span><strong>Map a whole commit</strong><p>Classify source, tests, generated code, config, and docs into one compact AST overview.</p></div>
-        <pre><code><span class="blue">const</span> release = <span class="blue">await</span> imprint.imprint(<span class="orange">'HEAD'</span>);
-<span class="blue">const</span> repo = <span class="blue">await</span> imprint.open(release.commit);
-console.log(repo.renderMap());</code></pre>
-      </article>
-      <article>
-        <div><span>02</span><strong>Slice by symbol, graph, glob, or diff</strong><p>Follow local imports N hops with explicit byte/token budgets and honest truncation metadata.</p></div>
-        <pre><code><span class="blue">const</span> slice = <span class="blue">await</span> repo.slice(&#123;
-  paths: [<span class="orange">'src/tools/*.ts'</span>],
-  depsOf: <span class="orange">'src/index.ts'</span>,
-  depth: <span class="orange">2</span>,
-  changed: <span class="orange">'HEAD~1'</span>,
-  maxBytes: <span class="orange">16_000</span>,
-&#125;);</code></pre>
-      </article>
-      <article>
-        <div><span>03</span><strong>Verify, promote, and roll back</strong><p>Refuse unverified commits and move the active release pointer deterministically.</p></div>
-        <pre><code><span class="blue">await</span> imprint.promote(<span class="orange">'HEAD'</span>);
-<span class="blue">await</span> imprint.rollback(<span class="orange">'HEAD~1'</span>);
-
-<span class="blue">const</span> diff = <span class="blue">await</span> imprint.diff(<span class="orange">'HEAD~1'</span>, <span class="orange">'HEAD'</span>);</code></pre>
-      </article>
-    </div>
-    <div class="install-note"><span>Install from GitHub</span><code>bun add github:acoyfellow/imprint</code></div>
-  </section>
-
-  <section class="system" id="how">
-    <div class="section-head"><div><p class="eyebrow">03 / System</p><h2>Honest coverage.<br />Lean release artifacts.</h2></div><p>Each commit gets a single lean JSON release containing the full manifest, coverage stats, AST map, digests, and check results — never a bloated copy of raw source files.</p></div>
-    <div class="flow">
-      <article><span>01</span><strong>Manifest</strong><p>Index 100% of tracked blobs via <code>git ls-tree</code> and separate generated noise from real code.</p></article>
-      <article><span>02</span><strong>AST Map</strong><p>Extract exports, declarations, and resolved local import edges with <code>oxc-parser</code>.</p></article>
-      <article><span>03</span><strong>Proof</strong><p>Digest manifest and map, verify completeness and whole-repo checks, gate promotion.</p></article>
-      <article><span>04</span><strong>Slice &amp; Ask</strong><p>Read exact blobs by <code>oid</code> on demand for budgeted slices or optional Workers AI Q&amp;A.</p></article>
-    </div>
-  </section>
-
-</main>
-
-<footer><span>Imprint · MIT · release v2</span><span>Built on Cloudflare <i></i></span></footer>
+  </footer>
+</div>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap');
-  :global(*){box-sizing:border-box} :global(html){scroll-behavior:smooth;background:#07111a} :global(body){margin:0;min-width:320px;background:#07111a;color:#f7f9fb;font-family:Inter,system-ui,sans-serif} :global(::selection){background:#f6821f;color:#170900}
-  header{height:68px;padding:0 clamp(20px,4vw,64px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(174,196,216,.14);position:sticky;top:0;z-index:20;background:rgba(7,17,26,.84);backdrop-filter:blur(18px)}
-  .brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}.mark{width:30px;height:30px;display:grid;place-items:center;background:#f6821f;color:#160900;font:800 16px/1 Inter}.brand strong{font-size:14px}.brand strong::after{content:'.';color:#71b8d8}nav{display:flex;gap:24px}nav a{color:#9baaba;text-decoration:none;font:500 11px IBM Plex Mono}nav a:hover{color:#f6821f}
-  .hero{min-height:720px;position:relative;overflow:hidden;display:grid;grid-template-columns:1.08fr .92fr;align-items:center;padding:90px clamp(24px,7vw,112px);isolation:isolate;background:radial-gradient(circle at 72% 52%,#15475f 0,rgba(21,71,95,.45) 22%,transparent 47%),linear-gradient(130deg,#07111a 34%,#0b2634 100%)}
-  .grid{position:absolute;inset:0;z-index:-2;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(to right,transparent,black 35%,black)}.orb{position:absolute;border-radius:50%;filter:blur(60px);z-index:-1}.orb-one{width:340px;height:340px;right:12%;top:34%;background:rgba(246,130,31,.16)}.orb-two{width:260px;height:260px;right:32%;bottom:10%;background:rgba(38,120,164,.25)}
-  .hero-copy{max-width:780px}.eyebrow{display:inline-flex;margin:0 0 24px;padding:8px 10px;border-left:1px solid #f6821f;border-top:1px solid #f6821f;color:#f6821f;font:600 10px IBM Plex Mono;letter-spacing:.16em;text-transform:uppercase}h1{font-size:clamp(48px,6vw,92px);line-height:.98;letter-spacing:-.065em;margin:0;max-width:12ch}h1 em{font-style:normal;color:#71b8d8}.lede{max-width:620px;color:#c4d0d9;font-size:clamp(16px,1.6vw,21px);line-height:1.65;margin:26px 0 20px}.hero-snippet{width:min(100%,560px);margin-top:10px;border:1px solid rgba(174,196,216,.18);background:rgba(8,13,19,.72);color:#f7f9fb}.hero-snippet pre{margin:0;padding:15px;overflow:auto;font:10px/1.65 IBM Plex Mono}.actions{display:flex;align-items:center;gap:14px;margin-top:18px}.actions a{padding:13px 18px;border:1px solid rgba(174,196,216,.27);color:#f7f9fb;text-decoration:none;font:600 12px IBM Plex Mono}.actions .primary{background:#f6821f;border-color:#f6821f;color:#1b0b00}.actions span{margin-left:20px}
-  .artifact{position:relative;width:min(33vw,460px);aspect-ratio:1;margin:auto;perspective:900px}.glass{position:absolute;width:68%;height:68%;left:16%;top:16%;border:1px solid rgba(113,184,216,.65);background:linear-gradient(145deg,rgba(113,184,216,.12),rgba(246,130,31,.08));box-shadow:0 28px 90px rgba(0,0,0,.28),inset 0 0 40px rgba(113,184,216,.08);transform:rotateY(-12deg) rotateX(8deg)}.back{transform:translate(48px,-38px) rotateY(-12deg) rotateX(8deg);opacity:.25}.middle{transform:translate(24px,-19px) rotateY(-12deg) rotateX(8deg);opacity:.5}.front{padding:18%;display:flex;flex-direction:column;justify-content:center}.front span,.front small{color:#9ccfe2;font:500 9px/1.8 IBM Plex Mono;text-transform:uppercase;letter-spacing:.12em}.front b{color:#f6821f;font:600 clamp(22px,3vw,44px) IBM Plex Mono}.front i{height:1px;background:linear-gradient(90deg,#f6821f,transparent);margin:16px 0}.coordinate{position:absolute;right:30px;bottom:24px;color:#667888;font:9px/1.6 IBM Plex Mono;letter-spacing:.1em}
-  section:not(.hero){padding:110px clamp(24px,8vw,128px);border-top:1px solid rgba(174,196,216,.14)}.section-head{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:end;margin-bottom:44px}.section-head h2,.code-grid h2{font-size:clamp(36px,5vw,68px);line-height:1;letter-spacing:-.055em;margin:0}.section-head>p{max-width:550px;color:#9baaba;line-height:1.75;margin:0}.section-head code,.flow code{font-family:IBM Plex Mono;font-size:.9em;color:#c4d0d9}
-  .metrics{max-width:960px;margin:0 auto 28px;display:grid;grid-template-columns:repeat(4,1fr);border:1px solid rgba(174,196,216,.18);background:rgba(8,13,19,.55)}.metrics article{padding:20px 22px;border-right:1px solid rgba(174,196,216,.14);display:flex;flex-direction:column;gap:6px}.metrics article:last-child{border-right:0}.metrics b{color:#f6821f;font:600 20px IBM Plex Mono}.metrics span{color:#9baaba;font:11px/1.45 IBM Plex Mono}
-  .terminal{max-width:960px;margin:auto;border:1px solid rgba(174,196,216,.2);background:#080d13;box-shadow:0 30px 100px rgba(0,0,0,.35)}.terminal-bar{height:42px;display:flex;align-items:center;gap:7px;padding:0 15px;border-bottom:1px solid rgba(174,196,216,.14)}.terminal-bar span{width:8px;height:8px;border-radius:50%;background:#223141}.terminal-bar span:first-child{background:#f6821f}.terminal-bar b{margin-left:auto;color:#667888;font:500 9px IBM Plex Mono}.terminal pre{padding:38px;margin:0;overflow:auto;font:13px/1.9 IBM Plex Mono}.terminal button{margin:0 38px 30px;padding:9px 12px;background:transparent;border:1px solid rgba(174,196,216,.27);color:#c4d0d9;font:10px IBM Plex Mono}.orange{color:#f6821f}.blue{color:#71b8d8}.green{color:#63d5a2}.muted{color:#667888}
-  .examples{background:#f4f7f9;color:#17212b}.examples .eyebrow{color:#b9530a;border-color:#b9530a}.examples .section-head>p{color:#5e6d79}.examples .section-head code{color:#17212b}.example-stack{border-top:1px solid rgba(39,58,73,.18)}.example-stack article{display:grid;grid-template-columns:minmax(220px,.7fr) 1.3fr;gap:48px;padding:30px 0;border-bottom:1px solid rgba(39,58,73,.18);align-items:center}.example-stack article>div{display:grid}.example-stack span{color:#b9530a;font:600 9px IBM Plex Mono}.example-stack strong{margin-top:12px;font-size:19px}.example-stack p{margin:7px 0 0;color:#5e6d79;font-size:12px;line-height:1.55}.example-stack pre{margin:0;padding:22px;background:#0b1118;color:#f7f9fb;overflow:auto;font:11px/1.75 IBM Plex Mono}.install-note{margin-top:28px;display:flex;align-items:center;gap:18px;color:#5e6d79;font:600 9px IBM Plex Mono;text-transform:uppercase;letter-spacing:.09em}.install-note code{padding:11px 13px;background:#e5ebef;color:#17212b;font:11px IBM Plex Mono;text-transform:none;letter-spacing:0}.system{background:#0b151f}.flow{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid rgba(174,196,216,.14)}.flow article{min-height:220px;padding:28px;border-right:1px solid rgba(174,196,216,.14)}.flow article:last-child{border:0}.flow span{color:#f6821f;font:10px IBM Plex Mono}.flow strong{display:block;margin:60px 0 10px;font-size:20px}.flow p{color:#9baaba;font-size:13px;line-height:1.6}
-  footer{height:88px;padding:0 clamp(24px,5vw,80px);display:flex;align-items:center;justify-content:space-between;color:#667888;font:9px IBM Plex Mono;text-transform:uppercase;letter-spacing:.1em}footer i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#f6821f;margin-left:8px}
-  @media(max-width:850px){nav{display:none}.hero{grid-template-columns:1fr;padding-top:120px}.artifact{width:70vw;margin-top:50px}.section-head{grid-template-columns:1fr;gap:28px}.metrics{grid-template-columns:1fr 1fr}.metrics article:nth-child(2){border-right:0}.metrics article:nth-child(1),.metrics article:nth-child(2){border-bottom:1px solid rgba(174,196,216,.14)}.example-stack article{grid-template-columns:1fr;gap:18px}.flow{grid-template-columns:1fr 1fr}.flow article:nth-child(2){border-right:0}.flow article{min-height:170px}.coordinate{display:none}}@media(max-width:520px){h1{font-size:46px}.actions{align-items:stretch;flex-direction:column}.actions a{text-align:center}.metrics{grid-template-columns:1fr}.metrics article{border-right:0;border-bottom:1px solid rgba(174,196,216,.14)}.metrics article:last-child{border-bottom:0}.install-note{align-items:flex-start;flex-direction:column;gap:8px}.install-note code{width:100%;overflow:auto}.flow{grid-template-columns:1fr}.flow article{border-right:0;border-bottom:1px solid rgba(174,196,216,.14)}.section-head h2{font-size:40px}.terminal pre{padding:22px;font-size:10px}footer{flex-direction:column;justify-content:center;gap:8px}}
-  @media(prefers-reduced-motion:reduce){:global(html){scroll-behavior:auto}}
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap');
+
+  :global(*) {
+    box-sizing: border-box;
+  }
+
+  :global(html) {
+    scroll-behavior: smooth;
+    background: #16191d;
+  }
+
+  :global(body) {
+    margin: 0;
+    min-width: 320px;
+    background: #16191d;
+    color: #eae5d9;
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :global(::selection) {
+    background: #e28743;
+    color: #16191d;
+  }
+
+  .app {
+    min-height: 100vh;
+    overflow-x: clip;
+    background-color: #16191d;
+    background-image: radial-gradient(rgba(234, 229, 217, 0.055) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(22, 25, 29, 0.92);
+    border-bottom: 1px solid #30353d;
+    backdrop-filter: blur(8px);
+  }
+
+  .topbar-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    height: 60px;
+    padding: 0 clamp(16px, 4vw, 40px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #eae5d9;
+    text-decoration: none;
+    letter-spacing: 0.16em;
+    font-size: 13px;
+  }
+
+  .stamp {
+    color: #e28743;
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .rev {
+    padding: 2px 6px;
+    border: 1px solid #3b414b;
+    color: #9e9a8e;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  .top-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .chip-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 8px;
+    border: 1px solid #334a40;
+    background: #1b2521;
+    color: #7ec4a0;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  .chip-live i {
+    width: 6px;
+    height: 6px;
+    background: #7ec4a0;
+    display: block;
+  }
+
+  nav {
+    display: flex;
+    gap: 20px;
+  }
+
+  nav a {
+    color: #a6a296;
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+
+  nav a:hover {
+    color: #e28743;
+  }
+
+  .hero {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: clamp(40px, 6vh, 72px) clamp(16px, 4vw, 40px) clamp(48px, 6vh, 76px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(28px, 4vw, 52px);
+    align-items: center;
+  }
+
+  .hero-left,
+  .hero-right,
+  .die-bench,
+  .deck-left,
+  .deck-right,
+  .cap-grid article,
+  .sdk-grid article {
+    min-width: 0;
+  }
+
+  .eyebrow {
+    margin: 0 0 18px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: #7ec4a0;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: 'Silkscreen', 'IBM Plex Mono', monospace;
+    font-weight: 400;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+    color: #f0ebe0;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: #e28743;
+  }
+
+  .sub {
+    margin: 18px 0 20px;
+    max-width: 520px;
+    font-size: 13px;
+    line-height: 1.82;
+    color: #b0aba0;
+  }
+
+  .sub code {
+    padding: 1px 5px;
+    border: 1px solid #353b44;
+    background: #1d2127;
+    color: #eae5d9;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .step-rail {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 22px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+  }
+
+  .step-rail button {
+    appearance: none;
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font: 500 11px/1 'IBM Plex Mono', monospace;
+    letter-spacing: 0.08em;
+    color: #7d7a72;
+    transition: color 180ms ease;
+  }
+
+  .step-rail button.done {
+    color: #aba69b;
+  }
+
+  .step-rail button.on {
+    color: #f0ebe0;
+    font-weight: 700;
+  }
+
+  .tick {
+    width: 7px;
+    height: 7px;
+    border: 1.5px solid #595e66;
+    display: inline-block;
+    transition: background 180ms ease, border-color 180ms ease;
+  }
+
+  .tick.done {
+    border-color: #7ec4a0;
+    background: rgba(126, 196, 160, 0.35);
+  }
+
+  .tick.on {
+    border-color: #e28743;
+    background: #e28743;
+  }
+
+  .install-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 500px;
+    padding: 8px 8px 8px 14px;
+    margin-bottom: 16px;
+    border: 1.5px solid #484f5a;
+    background: #1b1f25;
+    box-shadow: 4px 4px 0 #0e1013;
+  }
+
+  .install-box .sig {
+    color: #7ec4a0;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .install-box code {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .install-box button {
+    appearance: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border: 1px solid #16191d;
+    background: #e28743;
+    color: #16191d;
+    font: 700 10px/1 'IBM Plex Mono', monospace;
+    letter-spacing: 0.14em;
+  }
+
+  .install-box button:hover {
+    background: #eba064;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .cta {
+    appearance: none;
+    cursor: pointer;
+    padding: 11px 15px;
+    border: 1.5px solid #3c424d;
+    background: #1d2127;
+    color: #eae5d9;
+    text-decoration: none;
+    font: 600 11px/1 'IBM Plex Mono', monospace;
+    letter-spacing: 0.12em;
+    box-shadow: 3px 3px 0 #0e1013;
+    transition: transform 80ms steps(2), border-color 80ms steps(2);
+  }
+
+  .cta:hover {
+    transform: translate(-2px, -2px);
+    border-color: #c9c3b6;
+  }
+
+  .cta.warm {
+    background: #eae5d9;
+    border-color: #eae5d9;
+    color: #16191d;
+  }
+
+  .cta.dim {
+    background: transparent;
+  }
+
+  .die-bench {
+    border: 1.5px solid #3a404a;
+    background: #1b1f25;
+    box-shadow: 6px 6px 0 #0e1013;
+  }
+
+  .bench-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #2e333c;
+    background: #20252c;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: #a6a296;
+  }
+
+  .bench-head .sha {
+    color: #e28743;
+    font-weight: 600;
+    transition: color 220ms ease;
+  }
+
+  .bench-head .sha.verified {
+    color: #7ec4a0;
+  }
+
+  .dither-field {
+    background-color: #171a1f;
+    background-image:
+      linear-gradient(45deg, rgba(234, 229, 217, 0.03) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(234, 229, 217, 0.03) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(234, 229, 217, 0.03) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(234, 229, 217, 0.03) 75%);
+    background-size: 6px 6px;
+    background-position: 0 0, 0 3px, 3px -3px, -3px 0;
+  }
+
+  .strata-wrap {
+    padding: 12px 12px 6px;
+    display: grid;
+    place-items: center;
+  }
+
+  .strata-svg {
+    width: 100%;
+    max-width: 384px;
+    height: auto;
+  }
+
+  .layer-group {
+    cursor: pointer;
+    opacity: 0.48;
+    transition: opacity 280ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .layer-group.lit {
+    opacity: 1;
+  }
+
+  .layer-group.focus {
+    transform: translateY(-4px);
+  }
+
+  .slab-draw,
+  .rail-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .slab-draw.on,
+  .rail-draw.on {
+    stroke-dashoffset: 0;
+  }
+
+  .fade-in {
+    opacity: 0;
+    transition: opacity 320ms ease 140ms;
+  }
+
+  .fade-in.on {
+    opacity: 1;
+  }
+
+  .node-pop {
+    opacity: 0;
+    transition: opacity 260ms ease;
+  }
+
+  .node-pop.on {
+    opacity: 1;
+  }
+
+  .layer-readout {
+    padding: 16px 18px 18px;
+    border-top: 1px solid #2e333c;
+  }
+
+  .readout-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .readout-top strong {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: #f0ebe0;
+  }
+
+  .pill {
+    padding: 3px 7px;
+    border: 1px solid #354c42;
+    background: #1b2521;
+    color: #7ec4a0;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  .layer-readout p {
+    margin: 0 0 12px;
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: #a6a296;
+  }
+
+  .ascii-panel {
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid #2e333c;
+    background: #14171b;
+    color: #ded8ca;
+    font-size: 11px;
+    line-height: 1.55;
+    overflow: auto;
+  }
+
+  .dither-divider {
+    height: 18px;
+    background-color: #16191d;
+    background-image:
+      radial-gradient(#242931 1px, transparent 1px),
+      radial-gradient(#242931 1px, transparent 1px),
+      radial-gradient(#242931 1.5px, transparent 1.5px);
+    background-size: 8px 6px, 4px 6px, 4px 6px;
+    background-position: 0 0, 2px 6px, 0 12px;
+    background-repeat: repeat-x;
+  }
+
+  .dither-divider.flip {
+    transform: scaleY(-1);
+  }
+
+  .surface-band {
+    background: #1d2127;
+  }
+
+  .base-band {
+    background: #16191d;
+  }
+
+  .container {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 64px clamp(16px, 4vw, 40px);
+  }
+
+  .sec-head {
+    margin-bottom: 30px;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 4px 8px;
+    margin-bottom: 12px;
+    border: 1px solid #3b414b;
+    background: #16191d;
+    color: #e28743;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+  }
+
+  h2 {
+    margin: 0;
+    font-family: 'Silkscreen', 'IBM Plex Mono', monospace;
+    font-weight: 400;
+    font-size: clamp(20px, 2.7vw, 30px);
+    letter-spacing: 0.06em;
+    color: #f0ebe0;
+  }
+
+  .cap-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .cap-grid article {
+    position: relative;
+    padding: 22px 22px 28px;
+    border: 1.5px solid #363c46;
+    background: #171a1f;
+    box-shadow: 4px 4px 0 #0e1013;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .card-dither {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 8px;
+    background-image:
+      linear-gradient(45deg, rgba(226, 135, 67, 0.24) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(226, 135, 67, 0.24) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(226, 135, 67, 0.24) 75%),
+      linear-gradient(-45deg, transparent 75%, rgba(226, 135, 67, 0.24) 75%);
+    background-size: 4px 4px;
+    background-position: 0 0, 0 2px, 2px -2px, -2px 0;
+  }
+
+  .cap-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: #9e9a8e;
+  }
+
+  .cap-top b {
+    padding: 3px 7px;
+    border: 1px solid #354c42;
+    background: #1b2521;
+    color: #7ec4a0;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .cap-grid h3 {
+    margin: 0;
+    font-family: 'Silkscreen', 'IBM Plex Mono', monospace;
+    font-weight: 400;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    color: #f0ebe0;
+  }
+
+  .cap-grid p {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.78;
+    color: #b0aba0;
+  }
+
+  .cap-grid code {
+    padding: 1px 4px;
+    border: 1px solid #30353d;
+    background: #20252c;
+    color: #eae5d9;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .query-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .query-chips button {
+    appearance: none;
+    cursor: pointer;
+    padding: 10px 14px;
+    border: 1.5px solid #363c46;
+    background: #1d2127;
+    color: #b8b3a8;
+    font: 600 11px/1 'IBM Plex Mono', monospace;
+    letter-spacing: 0.05em;
+    box-shadow: 3px 3px 0 #0e1013;
+  }
+
+  .query-chips button.active {
+    background: #e28743;
+    border-color: #f0ebe0;
+    color: #16191d;
+  }
+
+  .query-deck {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    border: 1.5px solid #363c46;
+    background: #1b1f25;
+    box-shadow: 6px 6px 0 #0e1013;
+  }
+
+  .deck-left {
+    padding: 22px;
+    border-right: 1px solid #2e333c;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .kv {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid #2e333c;
+    background: #14171b;
+    min-width: 0;
+  }
+
+  .kv > span {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: #e28743;
+    flex-shrink: 0;
+  }
+
+  .kv code {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    white-space: nowrap;
+    font-size: 11.5px;
+  }
+
+  .mini-copy {
+    appearance: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 5px 8px;
+    border: 1px solid #454c57;
+    background: transparent;
+    color: #eae5d9;
+    font: 600 10px/1 'IBM Plex Mono', monospace;
+  }
+
+  .budget-meter {
+    margin-top: auto;
+    padding-top: 8px;
+  }
+
+  .budget-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 11px;
+    margin-bottom: 8px;
+    color: #a6a296;
+  }
+
+  .budget-top b {
+    color: #7ec4a0;
+  }
+
+  .meter-track {
+    height: 12px;
+    border: 1px solid #3c424d;
+    background: #14171b;
+    padding: 1px;
+  }
+
+  .meter-fill {
+    height: 100%;
+    background-color: #7ec4a0;
+    background-image:
+      linear-gradient(45deg, rgba(22, 25, 29, 0.22) 25%, transparent 25%),
+      linear-gradient(-45deg, rgba(22, 25, 29, 0.22) 25%, transparent 25%);
+    background-size: 4px 4px;
+    transition: width 200ms steps(6);
+  }
+
+  .deck-note {
+    margin: 12px 0 0;
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: #a6a296;
+  }
+
+  .deck-right {
+    padding: 22px;
+    background: #16191d;
+  }
+
+  .file-head {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: #7ec4a0;
+    margin-bottom: 14px;
+  }
+
+  .file-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 8px;
+  }
+
+  .file-list li {
+    padding: 8px 10px;
+    border: 1px solid #2b3038;
+    background: #1c2026;
+    font-size: 11.5px;
+    color: #eae5d9;
+    overflow-wrap: anywhere;
+  }
+
+  .sdk-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .sdk-grid article {
+    border: 1.5px solid #363c46;
+    background: #16191d;
+    box-shadow: 4px 4px 0 #0e1013;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2e333c;
+    background: #20252c;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #f0ebe0;
+  }
+
+  .card-top em {
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 500;
+    color: #9e9a8e;
+  }
+
+  .sdk-grid pre {
+    margin: 0;
+    padding: 18px;
+    flex: 1;
+    background: #14171b;
+    overflow: auto;
+    font-size: 11.5px;
+    line-height: 1.78;
+  }
+
+  .gh-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 18px;
+    border: 1.5px solid #363c46;
+    background: #16191d;
+    box-shadow: 4px 4px 0 #0e1013;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #a6a296;
+  }
+
+  .gh-bar code {
+    flex: 1;
+    min-width: 0;
+    font-size: 12.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    overflow: auto;
+    white-space: nowrap;
+  }
+
+  .gh-bar button {
+    appearance: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid #16191d;
+    background: #e28743;
+    color: #16191d;
+    font: 700 10px/1 'IBM Plex Mono', monospace;
+    letter-spacing: 0.14em;
+  }
+
+  .footer {
+    background: #121519;
+    border-top: 1px solid #2c313a;
+    color: #8f8b80;
+  }
+
+  .footer-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 32px clamp(16px, 4vw, 40px) 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .ascii-logo {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.25;
+    color: #6b685f;
+    overflow: auto;
+  }
+
+  .footer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+  }
+
+  .footer i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #e28743;
+    margin-left: 8px;
+  }
+
+  .tok-plain {
+    color: #eae5d9;
+  }
+
+  .tok-kw {
+    color: #e28743;
+    font-weight: 600;
+  }
+
+  .tok-str {
+    color: #7ec4a0;
+  }
+
+  .tok-num {
+    color: #e6c675;
+  }
+
+  .tok-fn {
+    color: #8eb2d9;
+  }
+
+  .tok-prop {
+    color: #c5a8d4;
+  }
+
+  .tok-cmt {
+    color: #73777f;
+    font-style: italic;
+  }
+
+  .tok-flag {
+    color: #e6c675;
+  }
+
+  .tok-cmd {
+    color: #e28743;
+    font-weight: 600;
+  }
+
+  @media (max-width: 920px) {
+    .chip-live,
+    nav {
+      display: none;
+    }
+    .hero,
+    .cap-grid,
+    .query-deck,
+    .sdk-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .deck-left {
+      border-right: 0;
+      border-bottom: 1px solid #2e333c;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .hero {
+      padding-top: 28px;
+    }
+    h1 {
+      font-size: clamp(22px, 7.2vw, 30px);
+    }
+    .install-box {
+      max-width: 100%;
+    }
+    .actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .cta {
+      text-align: center;
+    }
+    .gh-bar,
+    .footer-meta {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+    .kv {
+      flex-wrap: wrap;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html) {
+      scroll-behavior: auto;
+    }
+    .layer-group,
+    .slab-draw,
+    .rail-draw,
+    .fade-in,
+    .node-pop,
+    .meter-fill {
+      transition: none;
+    }
+    .signal-dot {
+      display: none;
+    }
+  }
 </style>
