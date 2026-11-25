@@ -1,17 +1,28 @@
 # Imprint
 
-**Every commit gets a proven snapshot of the repo.**
+**Every commit gets a complete, queryable repo artifact.**
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/acoyfellow/imprint)
 
-Imprint binds selected source files to an exact Git commit, records digests, and
-runs checks. `proof.verified` is true only if every check passed. Promote refuses
-an unverified release. `ask` can send that snapshot to Workers AI. The snapshot
-is concatenated source, not a trained adapter.
+Imprint indexes 100% of tracked files at an exact Git commit, classifies
+`source`, `test`, `generated`, `config`, `doc`, and `binary` files with zero
+silent drops, extracts an `oxc-parser` AST symbol/export/import map, and writes
+a lean `.imprint/releases/<commit>.json` with no duplicated raw file blobs. File
+contents are read on demand from Git by `oid` via `git cat-file --batch`.
+`proof.verified` is true only when completeness, coverage, and repo-wide checks
+all pass. Promote refuses an unverified release.
 
 ```ts
 const repo = await imprint.open('abc123');
-await repo.ask('How do sessions work?');
+console.log(repo.renderMap());
+
+const slice = await repo.slice({
+  symbols: ['GlobalOutbound'],
+  depsOf: 'src/index.ts',
+  depth: 2,
+  maxBytes: 32_000,
+});
+await repo.ask('How does request routing reach GlobalOutbound?');
 ```
 
 ## Install
@@ -33,10 +44,13 @@ bun install
 bun run prove
 ```
 
-The proof creates two commits with different APIs, imprints both, promotes the new one, and rolls back to the old one.
-A commit whose source contains `IMPRINT_BROKEN` gets `proof.verified: false`.
-Promote throws on that release. `mcpu` `repo.deploy` reads
-`.imprint/releases/<commit>.json` and refuses unless `proof.verified` is true.
+The proof creates two commits with generated files, imports, and an API rename,
+imprints both, verifies zero silent drops, traverses the commit's import graph
+via `depsOf`, promotes the new release, and rolls back to the old one. A commit
+carrying `IMPRINT_BROKEN` anywhere in non-generated tracked files gets
+`proof.verified: false` (even past 400 KB of generated code). Promote throws on
+that release. `mcpu` `repo.deploy` reads `.imprint/releases/<commit>.json` and
+refuses unless `proof.verified` is true.
 
 Run the same commit-bound question through real Workers AI:
 
@@ -44,17 +58,38 @@ Run the same commit-bound question through real Workers AI:
 bun run prove:ai
 ```
 
-Use it on a repository:
+Use it on a repository (all local commands work offline without AI credentials):
 
 ```bash
 bun run imprint imprint HEAD
+bun run imprint map HEAD
+bun run imprint slice HEAD --symbol GlobalOutbound --deps-of src/index.ts --depth 2 --max-bytes 32000
+bun run imprint slice HEAD --path 'src/tools/*.ts' --grep 'export\s+class' --regex
+bun run imprint slice HEAD --changed HEAD~1 --text
 bun run imprint ask 'How does this repository work?'
+bun run imprint ask --symbol createSession --deps-of createSession 'How are sessions created?'
 bun run imprint diff HEAD~1 HEAD
 bun run imprint promote HEAD
 bun run imprint rollback HEAD~1
 ```
 
-`ask` uses Workers AI when `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are set. The production site lives at [imprint.coey.dev](https://imprint.coey.dev).
+`ask` uses AI Gateway when `AI_GATEWAY_URL` + `AI_GATEWAY_TOKEN` are set, or
+Workers AI when `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` are set. The
+production site lives at [imprint.coey.dev](https://imprint.coey.dev).
+
+## Verified on a 2,304-file repo
+
+Measured via `bun proof/prove-mcp.ts` against `cloudflare/mcp` (`b8602d6d5ce5`,
+2,304 tracked files / 53.0 MB, including 2,148 files under `src/generated/`):
+
+| Metric | Result |
+| --- | --- |
+| Tracked / indexed files | `2,304 / 2,304` (`0` silent drops) |
+| Real `src/` mapped (excl. `src/generated/`) | `60 / 60` (`100%`) |
+| Generated files explicitly classified | `2,150` (`src/generated/`, `package-lock.json`, `worker-configuration.d.ts`) |
+| Compact AST repo map (`map.text`) | `22.5 KB` (`127` mapped files, `350` exports, `365` local import edges, `0` parse errors) |
+| Full commit imprint time | `188 ms` |
+| `.imprint/releases/<commit>.json` | `551 KB` complete manifest + AST map (`0` raw source file blobs stored on disk) |
 
 ## API
 
@@ -68,7 +103,22 @@ const imprint = new Imprint({
 
 const release = await imprint.imprint('HEAD');
 const repo = await imprint.open(release.commit);
-const answer = await repo.ask('Where is authentication implemented?');
+
+const mapText = repo.renderMap();
+const file = await repo.readFile('src/index.ts');
+const slice = await repo.slice({
+  paths: ['src/tools/*.ts'],
+  symbols: ['GlobalOutbound'],
+  depsOf: 'src/index.ts',
+  depth: 2,
+  direction: 'deps',
+  changed: 'HEAD~1',
+  maxBytes: 32_000,
+});
+
+const answer = await (await imprint.open(release.commit, { symbols: ['GlobalOutbound'] })).ask(
+  'How does GlobalOutbound enforce outbound policy?',
+);
 
 await imprint.promote(release.commit);
 await imprint.rollback('HEAD~1');
@@ -78,31 +128,39 @@ await imprint.rollback('HEAD~1');
 
 ```text
 commit
-  immutable source manifest
-  concatenated context
-  source and context digests
-  checks, then proof.verified
-  optional Workers AI ask
+  complete classified manifest (git ls-tree -r -l -z, 0 silent drops)
+  AST symbol + export + local import graph (oxc-parser + fallback)
+  manifest + map digests + whole-repo checks -> proof.verified
+  lean .imprint/releases/<commit>.json (no duplicated file blobs)
+  on-demand git cat-file --batch slicing + explicit truncation reporting
+  optional AI Gateway / Workers AI ask
 ```
 
-A release records the repository, commit, selected files, source digest, context digest, and check results. Promotion and rollback move the local release pointer.
+A release (`imprint.release.v2`) records the repository, commit, parents,
+complete classified manifest, coverage stats, structural AST map, digests, and
+check results. Promotion and rollback move the local release pointer.
 
-`0.0.1` sends that concatenated context to Workers AI. It does not generate a LoRA adapter. The Code2LoRA experiment is separate. See [Code2LoRA](https://arxiv.org/abs/2606.06492).
+Local `ask` sends the commit's structural map or budgeted slice to AI Gateway or
+Workers AI. It does not generate a LoRA adapter. The Code2LoRA experiment is
+separate. See [Code2LoRA](https://arxiv.org/abs/2606.06492).
 
 ## Worker API
 
 ```bash
-curl -X POST https://<your-worker>.workers.dev \
+curl -X POST https://imprint-api.coey.dev \
   -H 'content-type: application/json' \
   -H "Authorization: Bearer $ASK_API_TOKEN" \
   -d '{
     "repository": "acoyfellow/imprint",
     "commit": "<git-sha>",
-    "question": "What command runs the proof?"
+    "question": "What command runs the proof?",
+    "grep": "optional literal"
   }'
 ```
 
-`0.0.1` accepts public GitHub repositories. It selects up to 40 text files and 300 KB per request, then sends that commit-bound context to Workers AI.
+The Worker accepts public GitHub repositories. Default ask selects up to 40 text
+files and 300 KB. Pass `grep` or `paths` to seal a smaller slice instead of the
+A–Z window.
 
 **Auth (fail-closed).** The ask endpoint runs Workers AI on your account, so it is never anonymous. Set `ASK_API_TOKEN` (a Worker secret); every ask request must send `Authorization: Bearer $ASK_API_TOKEN`. Without the token configured the endpoint returns `503`; with a missing or wrong bearer it returns `401`. For local development, `DEV_MODE=true` bypasses the check. Put the deployed route behind Cloudflare Access and use an Access service token for agent callers.
 
@@ -151,7 +209,7 @@ Uploads reject an artifact ID once any object exists under it. Promotion and rol
 
 ## Status
 
-`0.0.1`. Real Git commits, Workers AI, R2, and Durable Objects. No mock repository state.
+`imprint.release.v2`. Real Git commits, `oxc-parser` AST maps, on-demand blob slicing, Workers AI, R2, and Durable Objects. No mock repository state.
 
 ## License
 

@@ -6,6 +6,7 @@ site/bundles.generated.ts
 .dev.vars
 .alchemy
 .wrangler
+.guardrail
 .imprint
 experiments/**/adapter.pt
 experiments/**/run.log

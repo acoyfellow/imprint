@@ -3,9 +3,16 @@
   "name": "imprint",
   "main": "src/worker.ts",
   "compatibility_date": "2026-04-17",
+  "account_id": "bfcb6ac5b3ceaf42a09607f6f7925823",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "imprint-api.coey.dev", "custom_domain": true }],
   "ai": {
     "binding": "AI",
     "remote": true
+  },
+  "vars": {
+    "AI_MODEL": "@cf/moonshotai/kimi-k2.7-code"
   },
   "r2_buckets": [
     {

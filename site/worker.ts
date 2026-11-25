@@ -9,13 +9,13 @@ const app = new Hono<{ Bindings: Env }>();
 attachSvelteRoutes(app as unknown as Hono, { bundles });
 
 const description =
-  'Imprint binds selected source to an exact Git commit, records digests, and sets proof.verified only when every check passed.';
+  'Imprint turns any Git commit into a complete, queryable repo artifact: full classified manifest, AST symbol and import map, on-demand graph slicing, and verified release proofs.';
 const head = [
   `<meta name="description" content="${description}">`,
   '<link rel="canonical" href="https://imprint.coey.dev/">',
   '<meta name="theme-color" content="#07111a">',
   '<meta property="og:type" content="website">',
-  '<meta property="og:title" content="Imprint — every commit gets a proven snapshot">',
+  '<meta property="og:title" content="Imprint — every commit gets a queryable repo artifact">',
   `<meta property="og:description" content="${description}">`,
   '<meta property="og:url" content="https://imprint.coey.dev/">',
   '<meta name="twitter:card" content="summary_large_image">',
@@ -26,7 +26,7 @@ app.get(
   '/',
   svelteRenderer(App, {
     hydrateAs: 'app',
-    title: 'Imprint — every commit gets a proven snapshot',
+    title: 'Imprint — every commit gets a queryable repo artifact',
     head,
     props: {},
   }),
