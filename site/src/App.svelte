@@ -329,6 +329,7 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
         <nav>
           <a href="#capabilities">SPEC</a>
           <a href="#query">SLICE</a>
+          <a href="#assay">ASSAY</a>
           <a href="#sdk">SDK</a>
           <a href="https://github.com/acoyfellow/imprint">GITHUB ↗</a>
         </nav>
@@ -744,10 +745,138 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
 
     <div class="dither-divider" aria-hidden="true"></div>
 
-    <section class="surface-band" id="sdk">
+    <section class="surface-band" id="assay">
       <div class="container">
         <div class="sec-head">
-          <span class="tag">░▒▓ 03 · INSTALL FROM GITHUB</span>
+          <span class="tag">░▒▓ 03 · LIVE IN ASSAY (28 SEATS)</span>
+          <h2>MEASURED ON REAL AGENT FLEETS.</h2>
+          <p class="sec-sub">
+            Apples-to-apples A/B inside <a href="https://assay.coey.dev">assay</a> on
+            <code>claude-haiku-5-5</code> with sandbox-blocked hidden graders, key-isolated relay,
+            and AST-merged <code>land</code> verification.
+          </p>
+        </div>
+
+        <div class="bench-grid">
+          <article class="bench-card">
+            <div class="bench-top">
+              <span>DOMAIN-RACE · 16 SEATS (8 vs 8)</span>
+              <b>-48% WALL TIME</b>
+            </div>
+            <p class="bench-desc">
+              4 concurrent domain features AST-merged onto one branch, gated by
+              <code>vitest</code> + <code>tsc</code>. Imprint seeded a <code>3.7 KB</code> AST map
+              with zero file bloat.
+            </p>
+            <div class="bench-table">
+              <div class="bt-row bt-head">
+                <span>METRIC</span>
+                <span>BASELINE</span>
+                <span>ASSAY_IMPRINT=1</span>
+              </div>
+              <div class="bt-row">
+                <span>PASS / LAND</span>
+                <span>8/8 · 4/4</span>
+                <span class="win">8/8 · 4/4</span>
+              </div>
+              <div class="bt-row">
+                <span>FLEET WALL TIME</span>
+                <span>173.6 s</span>
+                <span class="win">89.7 s (-48%)</span>
+              </div>
+              <div class="bt-row">
+                <span>TOTAL SEAT TIME</span>
+                <span>706.2 s</span>
+                <span class="win">474.5 s (-33%)</span>
+              </div>
+              <div class="bt-row">
+                <span>DIFF SIZE (8 SEATS)</span>
+                <span>1,151 lines</span>
+                <span class="win">1,043 lines (-9%)</span>
+              </div>
+              <div class="bt-row">
+                <span>FLEET SPEND</span>
+                <span>$0.8800</span>
+                <span>$0.8803 (flat)</span>
+              </div>
+            </div>
+            <div class="bench-foot">
+              <span>LAND DIGEST</span>
+              <code>sha256:39eb202731b8 · 30 files · 5.6 KB map · verified</code>
+            </div>
+          </article>
+
+          <article class="bench-card">
+            <div class="bench-top">
+              <span>TALLY · 12 SEATS (6 vs 6)</span>
+              <b>-17% TURNS</b>
+            </div>
+            <p class="bench-desc">
+              3 tasks on a compact 20-file TypeScript repo with <code>node --test</code> hidden
+              graders. Imprint seeded a <code>2.2 KB</code> AST map + 1-hop writable slice.
+            </p>
+            <div class="bench-table">
+              <div class="bt-row bt-head">
+                <span>METRIC</span>
+                <span>BASELINE</span>
+                <span>ASSAY_IMPRINT=1</span>
+              </div>
+              <div class="bt-row">
+                <span>PASS / LAND</span>
+                <span>6/6 · 3/3</span>
+                <span class="win">6/6 · 3/3</span>
+              </div>
+              <div class="bt-row">
+                <span>TOTAL TURNS</span>
+                <span>35 (5.83/seat)</span>
+                <span class="win">29 (4.83/seat, -17%)</span>
+              </div>
+              <div class="bt-row">
+                <span>FASTEST SEAT</span>
+                <span>8 turns · 32.3 s</span>
+                <span class="win">2 turns · 18.5 s</span>
+              </div>
+              <div class="bt-row">
+                <span>DIFF SIZE (6 SEATS)</span>
+                <span>399 lines</span>
+                <span class="win">364 lines (-9%)</span>
+              </div>
+              <div class="bt-row">
+                <span>FLEET SPEND</span>
+                <span>$0.2164</span>
+                <span>$0.2345 (+$0.018)</span>
+              </div>
+            </div>
+            <div class="bench-foot">
+              <span>LAND DIGEST</span>
+              <code>sha256:0839f5c4d088 · 20 files · 2.2 KB map · verified</code>
+            </div>
+          </article>
+        </div>
+
+        <div class="assay-cmd">
+          <span>RUN IN ASSAY</span>
+          <code>{#each tokenizeCli('ASSAY_IMPRINT=1 bun assay run examples/domain-race/plan-neon-isolated.json') as tok}<span class={`tok-${tok.kind}`}>{tok.text}</span>{/each}</code>
+          <button
+            type="button"
+            onclick={() =>
+              copyText(
+                'assay-cmd',
+                'ASSAY_IMPRINT=1 bun assay run examples/domain-race/plan-neon-isolated.json',
+              )}
+          >
+            {copiedKey === 'assay-cmd' ? 'COPIED ✓' : 'COPY'}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div class="dither-divider flip" aria-hidden="true"></div>
+
+    <section class="base-band" id="sdk">
+      <div class="container">
+        <div class="sec-head">
+          <span class="tag">░▒▓ 04 · INSTALL FROM GITHUB</span>
           <h2>TWO CALLS TO START.</h2>
         </div>
 
@@ -1028,6 +1157,7 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
   .deck-left,
   .deck-right,
   .cap-grid article,
+  .bench-card,
   .sdk-grid article {
     min-width: 0;
   }
@@ -1627,6 +1757,172 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
     overflow-wrap: anywhere;
   }
 
+  .sec-sub {
+    margin: 12px 0 0;
+    max-width: 680px;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #a6a296;
+  }
+
+  .sec-sub a {
+    color: #e28743;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(226, 135, 67, 0.45);
+  }
+
+  .sec-sub code {
+    padding: 1px 5px;
+    border: 1px solid #30353d;
+    background: #16191d;
+    color: #eae5d9;
+    font-size: 11.5px;
+  }
+
+  .bench-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .bench-card {
+    border: 1.5px solid #363c46;
+    background: #16191d;
+    box-shadow: 4px 4px 0 #0e1013;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .bench-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2e333c;
+    background: #20252c;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #eae5d9;
+  }
+
+  .bench-top b {
+    padding: 3px 7px;
+    border: 1px solid #354c42;
+    background: #1b2521;
+    color: #7ec4a0;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .bench-desc {
+    margin: 0;
+    padding: 14px 16px 12px;
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: #a6a296;
+  }
+
+  .bench-desc code {
+    padding: 1px 4px;
+    border: 1px solid #30353d;
+    background: #1d2127;
+    color: #eae5d9;
+    font-size: 11px;
+  }
+
+  .bench-table {
+    margin: 0 16px 14px;
+    border: 1px solid #2b3038;
+    background: #14171b;
+  }
+
+  .bt-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) minmax(0, 1.1fr);
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #232830;
+    font-size: 11px;
+    color: #c9c3b6;
+  }
+
+  .bt-row:last-child {
+    border-bottom: 0;
+  }
+
+  .bt-head {
+    background: #1c2026;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #8f8b80;
+  }
+
+  .bt-row .win {
+    color: #7ec4a0;
+    font-weight: 600;
+  }
+
+  .bench-foot {
+    margin-top: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 10px 16px;
+    border-top: 1px dashed #2e333c;
+    background: #14171b;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: #8f8b80;
+  }
+
+  .bench-foot code {
+    color: #8eb2d9;
+    font-size: 10.5px;
+    overflow-wrap: anywhere;
+  }
+
+  .assay-cmd {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    border: 1.5px solid #363c46;
+    background: #16191d;
+    box-shadow: 4px 4px 0 #0e1013;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #a6a296;
+  }
+
+  .assay-cmd code {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+    white-space: nowrap;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .assay-cmd button {
+    appearance: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid #16191d;
+    background: #e28743;
+    color: #16191d;
+    font: 700 10px/1 'IBM Plex Mono', monospace;
+    letter-spacing: 0.14em;
+  }
+
   .sdk-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -2037,6 +2333,7 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
     }
     .hero,
     .cap-grid,
+    .bench-grid,
     .query-deck,
     .sdk-grid {
       grid-template-columns: minmax(0, 1fr);
@@ -2065,6 +2362,7 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
       text-align: center;
     }
     .gh-bar,
+    .assay-cmd,
     .footer-top,
     .footer-notice {
       flex-direction: column;
