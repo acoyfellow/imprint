@@ -10,6 +10,7 @@
   let manualHold = $state(false);
   let activeQuery = $state<QueryId>('deps');
   let copiedKey = $state<string | null>(null);
+  let peekEl: HTMLDivElement | null = null;
 
   const installCmd = 'bun add github:acoyfellow/imprint';
 
@@ -260,9 +261,29 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
 
   onMount(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const syncPeek = () => {
+      if (!peekEl) return;
+      if (reduced) {
+        peekEl.style.setProperty('--peek', '1');
+        return;
+      }
+      const r = peekEl.getBoundingClientRect();
+      const v = window.innerHeight;
+      const t = Math.min(1, Math.max(0, (v - r.bottom + 40) / (r.height + 40)));
+      const end = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      peekEl.style.setProperty('--peek', String(end ? 1 : t));
+      peekEl.classList.toggle('settled', end);
+    };
+    syncPeek();
+    window.addEventListener('scroll', syncPeek, { passive: true });
+    window.addEventListener('resize', syncPeek, { passive: true });
+
     if (reduced) {
       stage = 4;
-      return;
+      return () => {
+        window.removeEventListener('scroll', syncPeek);
+        window.removeEventListener('resize', syncPeek);
+      };
     }
     stage = 1;
     let timer: ReturnType<typeof setTimeout>;
@@ -275,7 +296,11 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
       }, waitMs);
     };
     schedule();
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', syncPeek);
+      window.removeEventListener('resize', syncPeek);
+    };
   });
 
   async function copyText(key: string, value: string) {
@@ -757,10 +782,112 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
 
   <footer class="footer">
     <div class="footer-inner">
-      <pre class="ascii-logo" aria-hidden="true">{footerAscii}</pre>
-      <div class="footer-meta">
-        <span>IMPRINT · MIT · GITHUB:ACOYFELLOW/IMPRINT</span>
-        <span>BUILT ON CLOUDFLARE <i aria-hidden="true"></i></span>
+      <div class="peek" bind:this={peekEl} aria-hidden="true">
+        <img class="astronaut" src="/astronaut-peek.webp" alt="" width="400" height="362" />
+      </div>
+
+      <div class="footer-top">
+        <pre class="ascii-logo" aria-hidden="true">{footerAscii}</pre>
+        <div class="footer-links">
+          <a href="https://github.com/acoyfellow/imprint">GITHUB ↗</a>
+          <a href="/llms.txt">LLMS.TXT</a>
+          <span>MIT LICENSE</span>
+        </div>
+      </div>
+
+      <div class="footer-notice">
+        <svg
+          viewBox="0 0 341 156"
+          width="48"
+          height="22"
+          role="img"
+          aria-label="Cloudflare"
+          class="cf-mark"
+        >
+          <path
+            d="M275.125 68.25C311.507 68.25 341 97.9335 341 134.55C341 141.077 340.063 147.385 338.317 153.343C337.848 154.943 336.363 156 334.706 156H243.056C241.697 156 240.76 154.628 241.247 153.351L242.999 148.76C248.595 134.03 264.56 121.963 279.331 121.256L307.33 119.813C308.826 119.736 310 118.492 310 116.985C310 115.485 308.838 114.245 307.351 114.157L281.059 112.601C266.924 111.877 260.018 99.2932 263.82 86.179L268.195 71.0866C268.64 69.5514 269.971 68.4343 271.557 68.3476C272.738 68.2831 273.928 68.25 275.125 68.25Z"
+            fill="#e6c675"
+          />
+          <path
+            d="M184.062 0C222 0 253.868 26.1297 262.882 61.4824C263.26 62.967 263.142 64.5333 262.601 65.9662L255.383 85.0897C249.787 99.8196 235.406 112.593 219.134 112.593L93.7928 114.043C92.2801 114.061 91.063 115.3 91.0625 116.823C91.0625 118.344 92.2776 119.585 93.789 119.605L217.365 121.248C231.531 121.248 238.406 134.556 234.606 147.671L233.011 153.189C232.53 154.855 231.014 156 229.291 156H3.90889C1.98075 156 0.330745 154.574 0.17634 152.64C0.0594555 151.175 0 149.695 0 148.2C0 119.723 21.6617 96.3403 49.306 93.8266C48.7387 91.2419 48.4375 88.5564 48.4375 85.8C48.4375 65.3379 64.919 48.75 85.25 48.75C93.3413 48.75 100.822 51.3789 106.897 55.8321C117.716 23.3806 148.176 0 184.062 0Z"
+            fill="#e28743"
+          />
+        </svg>
+        <p>
+          <strong>OSS experiment, not officially endorsed by Cloudflare.</strong> Here be dragons.
+          <span class="dragon" aria-hidden="true">
+            <svg viewBox="0 0 64 20" shape-rendering="crispEdges">
+              <rect x="28" y="0" width="2" height="2" /><rect x="30" y="0" width="2" height="2" />
+              <rect x="26" y="2" width="2" height="2" /><rect x="28" y="2" width="2" height="2" />
+              <rect x="30" y="2" width="2" height="2" /><rect x="32" y="2" width="2" height="2" />
+              <rect x="24" y="4" width="2" height="2" /><rect x="26" y="4" width="2" height="2" />
+              <rect x="28" y="4" width="2" height="2" /><rect x="30" y="4" width="2" height="2" />
+              <rect x="32" y="4" width="2" height="2" /><rect x="34" y="4" width="2" height="2" />
+              <rect x="0" y="6" width="2" height="2" /><rect x="22" y="6" width="2" height="2" />
+              <rect x="24" y="6" width="2" height="2" /><rect x="26" y="6" width="2" height="2" />
+              <rect x="28" y="6" width="2" height="2" /><rect x="30" y="6" width="2" height="2" />
+              <rect x="0" y="8" width="2" height="2" /><rect x="2" y="8" width="2" height="2" />
+              <rect x="20" y="8" width="2" height="2" /><rect x="22" y="8" width="2" height="2" />
+              <rect x="24" y="8" width="2" height="2" /><rect x="26" y="8" width="2" height="2" />
+              <rect x="2" y="10" width="2" height="2" /><rect x="4" y="10" width="2" height="2" />
+              <rect x="10" y="10" width="2" height="2" /><rect x="12" y="10" width="2" height="2" />
+              <rect x="14" y="10" width="2" height="2" /><rect x="16" y="10" width="2" height="2" />
+              <rect x="18" y="10" width="2" height="2" /><rect x="20" y="10" width="2" height="2" />
+              <rect x="22" y="10" width="2" height="2" /><rect x="24" y="10" width="2" height="2" />
+              <rect x="4" y="12" width="2" height="2" /><rect x="6" y="12" width="2" height="2" />
+              <rect x="8" y="12" width="2" height="2" /><rect x="10" y="12" width="2" height="2" />
+              <rect x="12" y="12" width="2" height="2" /><rect x="14" y="12" width="2" height="2" />
+              <rect x="16" y="12" width="2" height="2" /><rect x="18" y="12" width="2" height="2" />
+              <rect x="20" y="12" width="2" height="2" /><rect x="22" y="12" width="2" height="2" />
+              <rect x="24" y="12" width="2" height="2" />
+              <rect x="6" y="14" width="2" height="2" /><rect x="8" y="14" width="2" height="2" />
+              <rect x="10" y="14" width="2" height="2" /><rect x="12" y="14" width="2" height="2" />
+              <rect x="14" y="14" width="2" height="2" /><rect x="16" y="14" width="2" height="2" />
+              <rect x="18" y="14" width="2" height="2" /><rect x="20" y="14" width="2" height="2" />
+              <rect x="22" y="14" width="2" height="2" />
+              <rect x="8" y="16" width="2" height="2" /><rect x="10" y="16" width="2" height="2" />
+              <rect x="18" y="16" width="2" height="2" /><rect x="20" y="16" width="2" height="2" />
+              <rect x="8" y="18" width="2" height="2" /><rect x="18" y="18" width="2" height="2" />
+              <g class="wing-up">
+                <rect x="12" y="2" width="2" height="2" /><rect x="14" y="2" width="2" height="2" />
+                <rect x="14" y="4" width="2" height="2" /><rect x="16" y="4" width="2" height="2" />
+                <rect x="18" y="4" width="2" height="2" /><rect x="16" y="6" width="2" height="2" />
+                <rect x="18" y="6" width="2" height="2" /><rect x="20" y="6" width="2" height="2" />
+                <rect x="22" y="6" width="2" height="2" /><rect x="18" y="8" width="2" height="2" />
+                <rect x="20" y="8" width="2" height="2" /><rect x="22" y="8" width="2" height="2" />
+                <rect x="24" y="8" width="2" height="2" />
+              </g>
+              <g class="wing-down">
+                <rect x="18" y="6" width="2" height="2" /><rect x="20" y="6" width="2" height="2" />
+                <rect x="22" y="6" width="2" height="2" /><rect x="24" y="6" width="2" height="2" />
+                <rect x="16" y="8" width="2" height="2" /><rect x="18" y="8" width="2" height="2" />
+                <rect x="20" y="8" width="2" height="2" /><rect x="22" y="8" width="2" height="2" />
+                <rect x="14" y="10" width="2" height="2" /><rect x="16" y="10" width="2" height="2" />
+                <rect x="18" y="10" width="2" height="2" /><rect x="12" y="12" width="2" height="2" />
+                <rect x="14" y="12" width="2" height="2" />
+              </g>
+              <g class="belly">
+                <rect x="12" y="12" width="2" height="2" /><rect x="14" y="12" width="2" height="2" />
+                <rect x="16" y="12" width="2" height="2" /><rect x="18" y="12" width="2" height="2" />
+                <rect x="20" y="12" width="2" height="2" /><rect x="22" y="12" width="2" height="2" />
+                <rect x="14" y="14" width="2" height="2" /><rect x="16" y="14" width="2" height="2" />
+                <rect x="18" y="14" width="2" height="2" /><rect x="20" y="14" width="2" height="2" />
+              </g>
+              <rect class="eye" x="30" y="2" width="2" height="2" />
+              <g class="fire">
+                <rect class="f1 hot" x="36" y="4" width="2" height="2" />
+                <rect class="f2" x="40" y="2" width="2" height="2" />
+                <rect class="f2" x="40" y="6" width="2" height="2" />
+                <rect class="f3 hot" x="44" y="0" width="2" height="2" />
+                <rect class="f3" x="44" y="4" width="2" height="2" />
+                <rect class="f3" x="46" y="8" width="2" height="2" />
+                <rect class="f4 hot" x="50" y="2" width="2" height="2" />
+                <rect class="f4" x="52" y="6" width="2" height="2" />
+                <rect class="f4" x="56" y="4" width="2" height="2" />
+              </g>
+            </svg>
+          </span>
+        </p>
       </div>
     </div>
   </footer>
@@ -1584,18 +1711,56 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
   }
 
   .footer {
+    position: relative;
+    margin-top: 96px;
     background: #121519;
     border-top: 1px solid #2c313a;
     color: #8f8b80;
   }
 
   .footer-inner {
+    position: relative;
     max-width: 1140px;
     margin: 0 auto;
-    padding: 32px clamp(16px, 4vw, 40px) 44px;
+    padding: 30px clamp(16px, 4vw, 40px) 40px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 20px;
+  }
+
+  .peek {
+    pointer-events: none;
+    position: absolute;
+    bottom: 100%;
+    right: clamp(16px, 4vw, 40px);
+    width: min(160px, 32vw);
+    height: 145px;
+    overflow: hidden;
+    z-index: 4;
+  }
+
+  .peek .astronaut {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    transform: translateY(calc((1 - var(--peek, 0)) * 100%))
+      rotate(calc((1 - var(--peek, 0)) * 10deg));
+    transform-origin: 50% 100%;
+    filter: saturate(0.95) contrast(1.04);
+  }
+
+  .peek:global(.settled) .astronaut {
+    animation: 6s ease-in-out infinite chill;
+  }
+
+  .footer-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
   }
 
   .ascii-logo {
@@ -1606,22 +1771,224 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
     overflow: auto;
   }
 
-  .footer-meta {
+  .footer-links {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
     align-items: center;
-    gap: 10px;
+    gap: 18px;
     font-size: 10px;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.14em;
+    color: #8f8b80;
   }
 
-  .footer i {
+  .footer-links a {
+    color: #b0aba0;
+    text-decoration: none;
+  }
+
+  .footer-links a:hover {
+    color: #e28743;
+  }
+
+  .footer-notice {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: 18px;
+    border-top: 1px dashed #2e333c;
+  }
+
+  .cf-mark {
+    display: block;
+    flex: none;
+  }
+
+  .footer-notice p {
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: #8f8b80;
+  }
+
+  .footer-notice strong {
+    font-weight: 600;
+    color: #c8c2b4;
+  }
+
+  .dragon {
     display: inline-block;
-    width: 8px;
-    height: 8px;
-    background: #e28743;
-    margin-left: 8px;
+    width: 64px;
+    height: 20px;
+    margin-left: 6px;
+    vertical-align: -5px;
+  }
+
+  .dragon svg {
+    display: block;
+    width: 64px;
+    height: 20px;
+    fill: #eae5d9;
+  }
+
+  .dragon .wing-up {
+    animation: 2.4s step-end infinite wing-up;
+  }
+
+  .dragon .wing-down {
+    animation: 2.4s step-end infinite wing-down;
+  }
+
+  .dragon .belly {
+    fill: #e28743;
+    animation: 2.4s step-end infinite inhale;
+  }
+
+  .dragon .eye {
+    fill: #e28743;
+  }
+
+  .dragon .fire rect {
+    fill: #e28743;
+    opacity: 0;
+  }
+
+  .dragon .fire .hot {
+    fill: #e6c675;
+  }
+
+  .dragon .fire .f1 {
+    animation: 2.4s step-end infinite fire1;
+  }
+
+  .dragon .fire .f2 {
+    animation: 2.4s step-end infinite fire2;
+  }
+
+  .dragon .fire .f3 {
+    animation: 2.4s step-end infinite fire3;
+  }
+
+  .dragon .fire .f4 {
+    animation: 2.4s step-end infinite fire4;
+  }
+
+  @keyframes chill {
+    0%,
+    100% {
+      translate: 0;
+      rotate: 0deg;
+    }
+    30% {
+      translate: 0 -4px;
+      rotate: 3deg;
+    }
+    60% {
+      translate: 0 -1px;
+      rotate: -2.5deg;
+    }
+  }
+
+  @keyframes wing-up {
+    0%,
+    25%,
+    50%,
+    75% {
+      opacity: 1;
+    }
+    12.5%,
+    37.5%,
+    62.5%,
+    87.5% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes wing-down {
+    0%,
+    25%,
+    50%,
+    75% {
+      opacity: 0;
+    }
+    12.5%,
+    37.5%,
+    62.5%,
+    87.5% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes inhale {
+    0%,
+    40%,
+    75%,
+    100% {
+      opacity: 0;
+    }
+    45%,
+    70% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fire1 {
+    0%,
+    50% {
+      opacity: 0;
+    }
+    52%,
+    82% {
+      opacity: 1;
+    }
+    84%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fire2 {
+    0%,
+    54% {
+      opacity: 0;
+    }
+    56%,
+    80% {
+      opacity: 1;
+    }
+    82%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fire3 {
+    0%,
+    58% {
+      opacity: 0;
+    }
+    60%,
+    78% {
+      opacity: 1;
+    }
+    80%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fire4 {
+    0%,
+    62% {
+      opacity: 0;
+    }
+    64%,
+    74% {
+      opacity: 0.85;
+    }
+    76%,
+    100% {
+      opacity: 0;
+    }
   }
 
   .tok-plain {
@@ -1698,9 +2065,10 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
       text-align: center;
     }
     .gh-bar,
-    .footer-meta {
+    .footer-top,
+    .footer-notice {
       flex-direction: column;
-      align-items: stretch;
+      align-items: flex-start;
       gap: 10px;
     }
     .kv {
@@ -1722,6 +2090,13 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
     }
     .signal-dot {
       display: none;
+    }
+    .peek:global(.settled) .astronaut,
+    .dragon .wing-up,
+    .dragon .wing-down,
+    .dragon .belly,
+    .dragon .fire rect {
+      animation: none;
     }
   }
 </style>
