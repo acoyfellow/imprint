@@ -288,7 +288,7 @@ const diff = await imprint.diff('HEAD~1', 'HEAD');`;
 </script>
 
 <svelte:head>
-  <title>IMPRINT — commit-bound repo artifact</title>
+  <title>Imprint — Turn any Git commit into a queryable map</title>
 </svelte:head>
 
 <div class="app">

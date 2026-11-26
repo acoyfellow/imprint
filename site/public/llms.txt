@@ -1,0 +1,52 @@
+# Imprint
+
+> Turn any Git commit into a complete, queryable repo artifact: full classified manifest, compact AST symbol and import map, on-demand Git OID slicing, and honest proof gates.
+
+- Site: https://imprint.coey.dev/
+- Source: https://github.com/acoyfellow/imprint
+- Package: `@acoyfellow/imprint`
+
+## Install
+
+```sh
+bun add github:acoyfellow/imprint
+```
+
+## Core Capabilities
+
+1. **Complete Commit Manifest**: Uses `git ls-tree -r -l -z` to index 100% of tracked blobs at a resolved Git commit SHA with zero silent drops, separating source, tests, generated trees, config, and docs.
+2. **Compact AST Symbol & Import Map**: Uses `oxc-parser` (with lightweight fallback extractors for non-JS/TS languages) to extract exports, top-level declarations, and resolved local import edges into a compact overview (`~22.5 KB` for a 2,304-file repo).
+3. **On-Demand Graph Slicing**: Composes `paths` globs, `symbols`, literal or regex `grep`, N-hop `depsOf` import traversal, and `changed` commit diffs. Streams exact commit blobs via `git cat-file --batch` under explicit `maxBytes` or `maxTokens` budgets with `truncation.omitted` reporting.
+4. **Commit-Bound Proof Gates**: Writes lean release JSON (`.imprint/releases/<sha>.json` with zero duplicated file blobs) and refuses `promote` for any unverified commit.
+
+## SDK Quickstart
+
+```ts
+import { Imprint } from '@acoyfellow/imprint';
+
+const imprint = new Imprint({ directory: './repo' });
+const repo = await imprint.open('HEAD');
+
+console.log(repo.renderMap());
+
+const slice = await repo.slice({
+  symbols: ['GlobalOutbound'],
+  depsOf: 'src/index.ts',
+  depth: 2,
+  maxBytes: 32_000,
+});
+
+const release = await imprint.imprint('HEAD');
+await imprint.promote(release.commit);
+await imprint.rollback('HEAD~1');
+const diff = await imprint.diff('HEAD~1', 'HEAD');
+```
+
+## CLI Commands
+
+- `imprint imprint [ref]` — index, AST-map, verify, and persist `.imprint/releases/<sha>.json`
+- `imprint map [ref]` — print the compact AST symbol and import map
+- `imprint slice [ref] [--path ...] [--symbol ...] [--grep ...] [--regex] [--deps-of ...] [--depth N] [--changed REF] [--max-bytes N] [--max-tokens N] [--text]` — slice commit-bound files on demand
+- `imprint inspect [ref]` — inspect the release manifest, coverage stats, and proof checks
+- `imprint diff <from> <to>` — diff two imprinted commits
+- `imprint promote <ref>` / `imprint rollback <ref>` — move `.imprint/active` only to verified commits
