@@ -53,7 +53,11 @@ export class AiGatewayProvider implements ModelProvider {
           : (payload.error?.message ?? `AI Gateway returned HTTP ${response.status}`);
       throw new Error(message);
     }
-    return { text, model: payload.model ?? this.model, usage: payload.usage };
+    return {
+      text,
+      model: payload.model ?? this.model,
+      ...(payload.usage !== undefined ? { usage: payload.usage } : {}),
+    };
   }
 }
 
@@ -92,6 +96,10 @@ export class WorkersAiProvider implements ModelProvider {
         payload.errors?.[0]?.message ?? `Workers AI returned HTTP ${response.status}`,
       );
     }
-    return { text: payload.result.response, model: this.model, usage: payload.result.usage };
+    return {
+      text: payload.result.response,
+      model: this.model,
+      ...(payload.result.usage !== undefined ? { usage: payload.result.usage } : {}),
+    };
   }
 }

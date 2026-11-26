@@ -42,7 +42,7 @@ export async function listCommitBlobs(directory: string, commit: string): Promis
     if (parts.length < 4 || parts[1] !== 'blob') continue;
     const oid = parts[2];
     const bytes = Number(parts[3]);
-    if (!Number.isFinite(bytes)) continue;
+    if (!oid || !Number.isFinite(bytes)) continue;
     entries.push({ path, oid, bytes, kind: classifyFile(path, bytes) });
   }
   entries.sort((left, right) => left.path.localeCompare(right.path));

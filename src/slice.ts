@@ -152,7 +152,7 @@ function traverseDeps(
   while (head < queue.length) {
     const current = queue[head];
     head += 1;
-    if (current.dist >= depth) continue;
+    if (!current || current.dist >= depth) continue;
 
     const neighbors = new Set<string>();
     if (direction === 'deps' || direction === 'both') {
@@ -218,9 +218,12 @@ export async function executeSlice(input: {
 
   let grepMatches: Map<string, number> | null = null;
   if (slice.grep) {
-    const hits = await grepCommitPaths(directory, release.commit, slice.grep, {
-      regex: slice.grepRegex,
-    });
+    const hits = await grepCommitPaths(
+      directory,
+      release.commit,
+      slice.grep,
+      slice.grepRegex !== undefined ? { regex: slice.grepRegex } : undefined,
+    );
     grepMatches = new Map<string, number>();
     for (const path of hits) {
       if (manifestByPath.has(path)) grepMatches.set(path, 0);

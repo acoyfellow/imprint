@@ -35,7 +35,8 @@ function lineForOffset(offsets: number[], offset: number): number {
   let high = offsets.length - 1;
   while (low <= high) {
     const mid = (low + high) >> 1;
-    if (offsets[mid] <= offset) {
+    const midOffset = offsets[mid];
+    if (midOffset !== undefined && midOffset <= offset) {
       low = mid + 1;
     } else {
       high = mid - 1;
@@ -367,7 +368,8 @@ function parseJsTsFile(file: SourceFile, allPaths: Set<string>): FileMapEntry {
 
   const exports = dedupedSymbols.filter((sym) => sym.exported);
   const imports = [...edges.values()].sort((a, b) => a.specifier.localeCompare(b.specifier));
-  const parseError = result.errors.length > 0 ? result.errors[0].message.slice(0, 160) : undefined;
+  const firstError = result.errors[0];
+  const parseError = firstError ? firstError.message.slice(0, 160) : undefined;
 
   return {
     path: file.path,
@@ -388,65 +390,78 @@ function parseFallbackFile(file: SourceFile, allPaths: Set<string>): FileMapEntr
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
+    if (line === undefined) continue;
     const lineNumber = index + 1;
 
     if (ext === '.py') {
       const fn = line.match(/^(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/);
-      if (fn) {
+      const fnName = fn?.[1];
+      if (fnName) {
         symbols.push({
-          name: fn[1],
+          name: fnName,
           kind: 'function',
           line: lineNumber,
-          exported: !fn[1].startsWith('_'),
+          exported: !fnName.startsWith('_'),
         });
         continue;
       }
       const cls = line.match(/^class\s+([A-Za-z_][A-Za-z0-9_]*)/);
-      if (cls) {
+      const clsName = cls?.[1];
+      if (clsName) {
         symbols.push({
-          name: cls[1],
+          name: clsName,
           kind: 'class',
           line: lineNumber,
-          exported: !cls[1].startsWith('_'),
+          exported: !clsName.startsWith('_'),
         });
         continue;
       }
       const pyImp = line.match(/^from\s+(\.[A-Za-z0-9_.]*)\s+import\s+(.+)$/);
-      if (pyImp) {
-        const rel = pyImp[1].replace(/^\./, './').replace(/\./g, '/');
+      const pySpec = pyImp?.[1];
+      const pyNames = pyImp?.[2];
+      if (pySpec && pyNames) {
+        const rel = pySpec.replace(/^\./, './').replace(/\./g, '/');
         addImportEdge(
           edges,
           file.path,
           rel,
-          pyImp[2].split(',').map((s) => s.trim().split(/\s+as\s+/)[0]),
+          pyNames
+            .split(',')
+            .map((s) => s.trim().split(/\s+as\s+/)[0] ?? '')
+            .filter(Boolean),
           allPaths,
         );
       }
     } else if (ext === '.go') {
       const fn = line.match(/^func\s+(?:\([^)]+\)\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(/);
-      if (fn) {
+      const fnName = fn?.[1];
+      if (fnName) {
         symbols.push({
-          name: fn[1],
+          name: fnName,
           kind: 'function',
           line: lineNumber,
-          exported: /^[A-Z]/.test(fn[1]),
+          exported: /^[A-Z]/.test(fnName),
         });
         continue;
       }
       const tp = line.match(/^type\s+([A-Za-z_][A-Za-z0-9_]*)\s+(struct|interface)/);
-      if (tp) {
+      const tpName = tp?.[1];
+      const tpKind = tp?.[2];
+      if (tpName && tpKind) {
         symbols.push({
-          name: tp[1],
-          kind: tp[2] === 'interface' ? 'interface' : 'struct',
+          name: tpName,
+          kind: tpKind === 'interface' ? 'interface' : 'struct',
           line: lineNumber,
-          exported: /^[A-Z]/.test(tp[1]),
+          exported: /^[A-Z]/.test(tpName),
         });
       }
     } else if (ext === '.rs') {
       const rs = line.match(
         /^(pub\s+)?(?:async\s+)?(fn|struct|enum|trait|mod|type|const)\s+([A-Za-z_][A-Za-z0-9_]*)/,
       );
-      if (rs) {
+      const rsKind = rs?.[2];
+      const rsName = rs?.[3];
+      if (rsKind && rsName) {
         const mapKind: Record<string, SymbolKind> = {
           fn: 'function',
           struct: 'struct',
@@ -457,38 +472,44 @@ function parseFallbackFile(file: SourceFile, allPaths: Set<string>): FileMapEntr
           const: 'const',
         };
         symbols.push({
-          name: rs[3],
-          kind: mapKind[rs[2]] ?? 'const',
+          name: rsName,
+          kind: mapKind[rsKind] ?? 'const',
           line: lineNumber,
-          exported: Boolean(rs[1]),
+          exported: Boolean(rs?.[1]),
         });
       }
     } else if (ext === '.sh') {
       const sh = line.match(/^(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*\(\)\s*\{/);
-      if (sh) {
-        symbols.push({ name: sh[1], kind: 'function', line: lineNumber, exported: true });
+      const shName = sh?.[1];
+      if (shName) {
+        symbols.push({ name: shName, kind: 'function', line: lineNumber, exported: true });
       }
     } else if (ext === '.ex' || ext === '.exs') {
       const exMod = line.match(/^\s*defmodule\s+([A-Za-z0-9_.]+)/);
-      if (exMod) {
-        symbols.push({ name: exMod[1], kind: 'module', line: lineNumber, exported: true });
+      const exModName = exMod?.[1];
+      if (exModName) {
+        symbols.push({ name: exModName, kind: 'module', line: lineNumber, exported: true });
         continue;
       }
       const exFn = line.match(/^\s*(defp?)\s+([a-z_][A-Za-z0-9_?!]*)/);
-      if (exFn) {
+      const exFnKind = exFn?.[1];
+      const exFnName = exFn?.[2];
+      if (exFnKind && exFnName) {
         symbols.push({
-          name: exFn[2],
+          name: exFnName,
           kind: 'function',
           line: lineNumber,
-          exported: exFn[1] === 'def',
+          exported: exFnKind === 'def',
         });
       }
     } else if (ext === '.rb') {
       const rb = line.match(/^\s*(class|module|def)\s+([A-Za-z_][A-Za-z0-9_:?!]*)/);
-      if (rb) {
+      const rbKind = rb?.[1];
+      const rbName = rb?.[2];
+      if (rbKind && rbName) {
         symbols.push({
-          name: rb[2],
-          kind: rb[1] === 'def' ? 'function' : rb[1] === 'class' ? 'class' : 'module',
+          name: rbName,
+          kind: rbKind === 'def' ? 'function' : rbKind === 'class' ? 'class' : 'module',
           line: lineNumber,
           exported: true,
         });
@@ -497,8 +518,9 @@ function parseFallbackFile(file: SourceFile, allPaths: Set<string>): FileMapEntr
       const sql = line.match(
         /^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|VIEW|FUNCTION)\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_][A-Za-z0-9_."]*)/i,
       );
-      if (sql) {
-        symbols.push({ name: sql[1], kind: 'const', line: lineNumber, exported: true });
+      const sqlName = sql?.[1];
+      if (sqlName) {
+        symbols.push({ name: sqlName, kind: 'const', line: lineNumber, exported: true });
       }
     }
   }
@@ -696,8 +718,8 @@ export async function buildRepoMap(input: {
     commit: input.commit,
     coverage: input.coverage,
     files,
-    packageJson: input.packageJson,
-    docs: input.docs,
+    ...(input.packageJson !== undefined ? { packageJson: input.packageJson } : {}),
+    ...(input.docs !== undefined ? { docs: input.docs } : {}),
     configs,
   });
 

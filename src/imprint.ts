@@ -197,7 +197,7 @@ export class Imprint {
       manifest,
       coverage,
       codeFiles,
-      packageJson,
+      ...(packageJson !== undefined ? { packageJson } : {}),
       docs,
     });
 
@@ -375,10 +375,11 @@ export class RepositoryImprint {
       throw new Error(`path ${path} not found in commit ${this.release.commit}`);
     }
     const files = await readManifestEntries(this.directory, [entry]);
-    if (!files.length) {
+    const file = files[0];
+    if (!file) {
       throw new Error(`blob ${entry.oid} missing for ${path}`);
     }
-    return files[0];
+    return file;
   }
 
   async readFiles(paths?: string[]): Promise<SourceFile[]> {
@@ -422,7 +423,7 @@ export class RepositoryImprint {
         sourceDigest: this.release.sourceDigest,
       },
       model: result.model,
-      usage: result.usage,
+      ...(result.usage !== undefined ? { usage: result.usage } : {}),
     };
   }
 

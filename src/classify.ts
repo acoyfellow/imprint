@@ -60,7 +60,8 @@ const SRC_DIRS = new Set(['src']);
 function hasDirSegment(path: string, dirs: Set<string>): boolean {
   const parts = path.split('/');
   for (let i = 0; i < parts.length - 1; i += 1) {
-    if (dirs.has(parts[i].toLowerCase())) return true;
+    const segment = parts[i];
+    if (segment && dirs.has(segment.toLowerCase())) return true;
   }
   return false;
 }
